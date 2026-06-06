@@ -46,7 +46,10 @@
         .badge-sem-aquisicao { background-color: var(--teal); color: white; padding: 6px 16px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
 
         /* KANBAN OPERACIONAL DINÂMICO */
-        .grid-hub-top { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .grid-hub-top { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        @media (max-width: 1024px) { .grid-hub-top { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 640px) { .grid-hub-top { grid-template-columns: 1fr; } }
+        
         .hub-card { 
             background: var(--card-bg); border-radius: 10px; padding: 14px 20px; border: 1px solid var(--border-color); 
             cursor: pointer; transition: all 0.2s ease; position: relative; user-select: none;
@@ -55,7 +58,7 @@
         .hub-card.active-main { border: 2px solid var(--purple-select); background-color: var(--purple-light); }
         .hub-indicator { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; border-top-left-radius: 10px; border-bottom-left-radius: 10px; }
 
-        /* FILTRO DE CALENDÁRIO MESTRE DEDUZIDO */
+        /* FILTRO DE CALENDÁRIO */
         .filtro-master-wrapper { display: flex; justify-content: flex-end; margin-bottom: 24px; position: relative; }
         .trigger-datepicker { 
             background: #FFFFFF; border: 1px solid var(--border-color); padding: 8px 20px; 
@@ -149,16 +152,14 @@
         </header>
 
         <div id="banner-alerta-local" style="display:none;" class="analise-box erro-conexao">
-            <strong>⚠️ DISPOSITIVO LOCAL DETECTADO (RESTRIÇÃO CORS DE NAVEGADOR)</strong><br>
-            Como o arquivo roda local, o navegador pode restringir a sincronização em tempo real online.<br>
+            <strong>⚠️ DISPOSITIVO LOCAL DETECTADA (RESTRIÇÃO CORS DE NAVEGADOR)</strong><br>
+            Como o arquivo roda local, o navegador pode restringir a sincronização automática online.<br>
             <button class="btn-bypass" onclick="document.getElementById('bypass-file-input').click()">📂 Carregar Base CSV Manualmente</button>
         </div>
 
         <section>
-            <div class="section-title">🏢 Unidades Operacionais Identificadas na Base</div>
-            <div class="grid-hub-top" id="hub-projetos-container">
-                <div style="color: var(--text-muted); font-size: 13px; padding: 12px;">Aguardando mapeamento de linhas...</div>
-            </div>
+            <div class="section-title">🏢 Unidades Operacionais Estratégicas</div>
+            <div class="grid-hub-top" id="hub-projetos-container"></div>
         </section>
 
         <div class="filtro-master-wrapper">
@@ -202,7 +203,7 @@
                     <div class="scrollable-table">
                         <table class="table-project" id="tabela-broadcast-dados">
                             <thead>
-                                <tr><th>DATA</th><th>IDENTIFICADOR CORPORATIVO DO BROADCAST</th><th>TAXA DE SPAM %</th><th>DIRECIONAMENTO ESTRATÉGICO</th></tr>
+                                <tr><th>DATA</th><th>IDENTIFICADOR DA CAMPANHA (BROADCAST ID)</th><th>TAXA DE RECLAMAÇÃO %</th><th>STATUS SANITÁRIO</th></tr>
                             </thead>
                             <tbody></tbody>
                         </table>
@@ -231,21 +232,21 @@
         <input type="file" id="bypass-file-input" accept=".csv" style="display:none;" onchange="processarBypassManual(event)">
 
         <footer>
-            <p>🟢 Excelente (Aprovado): &lt; 0.10% | 🟡 Margem de Atenção (Otimizar): 0.10% - 0.29% | 🔴 Risco Sanitário (Remover Lote): &ge; 0.30%</p>
+            <p>🟢 Excelente (Aprovado): &lt; 0.10% | 🟡 Margem de Alerta (Otimizar): 0.10% - 0.29% | 🔴 Risco Sanitário (Remover Lote): &ge; 0.30%</p>
         </footer>
     </div>
 
     <div id="custom-toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 8px;"></div>
 
     <script>
-        // LINK DA TRANSMISSÃO EXCLUSIVA DA SUA ABA "DADOS"
         const MASTER_RAW_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSePugXgmjZTIO3_a46XJCGpjDHSSSCzUDR-Jk9OkPMafPffOIVr-M23se--EiwGrr6XE08nWMnIUwf/pub?gid=372389848&single=true&output=csv";
 
         const activeCharts = { gSpamDia: null };
         
-        // Dicionário de Nomenclatura Estética Executiva Corporativa
+        // FILTRO DE SUCESSO COORPORATIVO MESTRE - Apenas os 4 projetos autorizados
+        const LISTA_PROJETOS_OFICIAIS = ["404", "2513", "2470", "2547"];
+
         const PROJETOS_NOMES_CUSTOM = {
-            "403": "Solinero MX — Projeto 403",
             "404": "Solinero MX — Projeto 404",
             "2513": "MX02-Ep10 — Projeto 2513",
             "2470": "US09-HRZ — Projeto 2470",
@@ -253,7 +254,7 @@
         };
 
         let LOGS_PLANILHA = {};
-        const DADOS = { activeProjectId: null, activePreset: "7d", activeFilter: "todos", startDate: null, endDate: null, projetosConfig: {} };
+        const DADOS = { activeProjectId: "2513", activePreset: "7d", activeFilter: "todos", startDate: null, endDate: null, projetosConfig: {} };
 
         function showToast(message, type = 'success') {
             const container = document.getElementById("custom-toast-container");
@@ -272,14 +273,17 @@
             setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
         }
 
-        // MOTOR REGEX DE TRIAGEM: Identifica o código numérico oculto no meio da campanha (ex: broad-403...)
+        // DISPOSITIVO DE TRIAGEM ESTREITA: Varre o texto e só aceita um dos 4 projetos oficiais
         function extractProjectId(campaignName) {
-            if (!campaignName) return "Outros";
-            const match = campaignName.match(/(?:broad|projeto|proj|id)?[-_\s]?(\d{3,4})/i);
-            return match ? match[1] : "Outros";
+            if (!campaignName) return null;
+            for (let id of LISTA_PROJETOS_OFICIAIS) {
+                if (campaignName.includes(id)) {
+                    return id;
+                }
+            }
+            return null; // Descarta códigos fantasmas (102, 107, 108...)
         }
 
-        // ADAPTADOR CRONOLÓGICO: Converte textos (22 de nov de 2025 ou 2025-11-22) interpretando o ano real
         function limparEFormatarData(rawDate) {
             if (!rawDate) return null;
             let text = rawDate.toLowerCase().trim();
@@ -334,14 +338,15 @@
                 const rawCampaign = cols[campIdx];
                 const rawSpam = cols[spamIdx];
 
+                const projId = extractProjectId(rawCampaign);
+                if (!projId) return; // Filtra e ignora a linha se não pertencer aos 4 oficiais
+
                 const dateFormatted = limparEFormatarData(rawDate);
                 if (!dateFormatted || !rawSpam) return;
 
                 let spamVal = parseFloat(rawSpam.replace("%", "").replace(",", "."));
                 if (isNaN(spamVal)) return;
                 if (spamVal > 0 && spamVal < 0.05 && !rawSpam.includes("%")) spamVal = spamVal * 100;
-
-                const projId = extractProjectId(rawCampaign);
 
                 if (!novosLogs[dateFormatted]) novosLogs[dateFormatted] = [];
                 novosLogs[dateFormatted].push({ id: rawCampaign, spam: spamVal, projId: projId });
@@ -356,12 +361,11 @@
             return false;
         }
 
-        // GERADOR DINÂMICO DE CARDS: Descobre todos os projetos na planilha e monta a tela sozinhov
         function renderHubTopInitial() {
             const container = document.getElementById("hub-projetos-container");
             container.innerHTML = "";
             
-            Object.keys(DADOS.projetosConfig).forEach(id => {
+            LISTA_PROJETOS_OFICIAIS.forEach(id => {
                 const config = DADOS.projetosConfig[id];
                 const isActive = id === DADOS.activeProjectId ? "active-main" : "";
                 
@@ -384,28 +388,30 @@
 
         function reconstruirProjetosEAbas() {
             const detectados = {};
+            LISTA_PROJETOS_OFICIAIS.forEach(id => detectados[id] = { totalSpam: 0, count: 0 });
 
             for (let data in LOGS_PLANILHA) {
                 LOGS_PLANILHA[data].forEach(c => {
-                    if (!detectados[c.projId]) detectados[c.projId] = { totalSpam: 0, count: 0 };
-                    detectados[c.projId].totalSpam += c.spam;
-                    detectados[c.projId].count++;
+                    if (detectados[c.projId]) {
+                        detectados[c.projId].totalSpam += c.spam;
+                        detectados[c.projId].count++;
+                    }
                 });
             }
 
             DADOS.projetosConfig = {};
-            Object.keys(detectados).forEach(id => {
+            LISTA_PROJETOS_OFICIAIS.forEach(id => {
                 const d = detectados[id];
-                const avg = d.totalSpam / d.count;
+                const avg = d.count > 0 ? d.totalSpam / d.count : 0;
                 DADOS.projetosConfig[id] = {
-                    nomeDisplay: PROJETOS_NOMES_CUSTOM[id] || `Unidade Operacional — ${id}`,
-                    status: avg >= 0.30 ? "ruim" : (avg >= 0.10 ? "medio" : "bom"),
+                    nomeDisplay: PROJETOS_NOMES_CUSTOM[id],
+                    status: d.count === 0 ? "bom" : (avg >= 0.30 ? "ruim" : (avg >= 0.10 ? "medio" : "bom")),
                     mediaSpam: parseFloat(avg.toFixed(3))
                 };
             });
 
-            if (!DADOS.activeProjectId || !DADOS.projetosConfig[DADOS.activeProjectId]) {
-                DADOS.activeProjectId = Object.keys(DADOS.projetosConfig)[0] || "2513";
+            if (!LISTA_PROJETOS_OFICIAIS.includes(DADOS.activeProjectId)) {
+                DADOS.activeProjectId = "2513";
             }
 
             let projAtivoConfig = DADOS.projetosConfig[DADOS.activeProjectId];
@@ -429,13 +435,13 @@
                     showToast("Base corporativa integrada com sucesso!", "success");
                     document.getElementById("banner-alerta-local").style.display = "none";
                 } else {
-                    showToast("Estrutura desconhecida na planilha.", "error");
+                    showToast("Estrutura de dados inválida.", "error");
                 }
             } catch (error) {
                 document.getElementById("banner-alerta-local").style.display = "block";
-                showToast("Falta de permissão de rede local. Use a injeção manual.", "error");
+                showToast("Falta de permissão de rede local (CORS). Use a injeção manual.", "error");
             } finally {
-                btn.disabled = false; btn.innerText = "🔄 Sincronizar Base Ativa";
+                btn.disabled = false; btn.innerText = "🔄 Sincronizar Google Sheets";
             }
         }
 
@@ -459,7 +465,6 @@
             reader.readAsText(file);
         }
 
-        // ESCAVADOR CRONOLÓGICO: Encontra as datas reais da planilha para focar o calendário automaticamente
         function getAnchorDate() {
             let dates = Object.keys(LOGS_PLANILHA);
             if (dates.length === 0) return new Date(2025, 10, 22); 
@@ -572,7 +577,7 @@
 
             const tbody = document.getElementById("tabela-broadcast-dados").querySelector("tbody");
             if(campanhasExibidas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:24px;">Nenhum disparo localizado para o ${projId} na faixa cronológica selecionada.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:24px;">Nenhum disparo localizado para o projeto selecionado na faixa cronológica atual.</td></tr>`;
             } else {
                 tbody.innerHTML = campanhasExibidas.map(c => {
                     let label = c.spam <= 0.10 ? "Aprovado" : (c.spam < 0.30 ? "Otimizar" : "Remover");
@@ -589,7 +594,7 @@
 
         function renderInsights() {
             const projId = DADOS.activeProjectId; const spamMedio = DADOS.projetosConfig[projId]?.mediaSpam || 0;
-            document.getElementById("caixa-insights-postmaster").innerHTML = `<div><strong>📊 DIAGNÓSTICO INTEGRAL: ${PROJETOS_NOMES_CUSTOM[projId] || 'Projeto ' + projId}</strong><p style="font-size:12.5px; margin-top:4px;">Média global calculada no intervalo ativo: <strong style="color:var(--purple-select); font-size:14px;">${spamMedio.toFixed(3)}%</strong>. O ecossistema sanitário encontra-se dentro dos limites operacionais tolerados.</p></div>`;
+            document.getElementById("caixa-insights-postmaster").innerHTML = `<div><strong>📊 DIAGNÓSTICO INTEGRAL: ${PROJETOS_NOMES_CUSTOM[projId] || 'Projeto ' + projId}</strong><p style="font-size:12.5px; margin-top:4px;">Média global calculada no intervalo ativo: <strong style="color:var(--purple-select); font-size:14px;">${spamMedio.toFixed(3)}%</strong>. Monitoramento operando dentro dos padrões corporativos.</p></div>`;
         }
 
         function inspecionarCampanhaRow(element, idCampanha, dataCampanha, spamAtual) {
