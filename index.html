@@ -45,7 +45,7 @@
 
         .badge-sem-aquisicao { background-color: var(--teal); color: white; padding: 6px 16px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
 
-        /* KANBAN OPERACIONAL DINÂMICO */
+        /* KANBAN OPERACIONAL */
         .grid-hub-top { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
         @media (max-width: 1024px) { .grid-hub-top { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 640px) { .grid-hub-top { grid-template-columns: 1fr; } }
@@ -152,7 +152,7 @@
         </header>
 
         <div id="banner-alerta-local" style="display:none;" class="analise-box erro-conexao">
-            <strong>⚠️ DISPOSITIVO LOCAL DETECTADA (RESTRIÇÃO CORS DE NAVEGADOR)</strong><br>
+            <strong>⚠️ DISPOSITIVO LOCAL DETECTADO (RESTRIÇÃO CORS DE NAVEGADOR)</strong><br>
             Como o arquivo roda local, o navegador pode restringir a sincronização automática online.<br>
             <button class="btn-bypass" onclick="document.getElementById('bypass-file-input').click()">📂 Carregar Base CSV Manualmente</button>
         </div>
@@ -243,8 +243,8 @@
 
         const activeCharts = { gSpamDia: null };
         
-        // FILTRO DE SUCESSO COORPORATIVO MESTRE - Apenas os 4 projetos autorizados
-        const LISTA_PROJETOS_OFICIAIS = ["404", "2513", "2470", "2547"];
+        // FILTRO DE SUCESSO EXCLUSIVO - Apenas as 4 unidades operacionais autorizadas
+        const LISTA_PROJETOS_OFICIAIS = ["404", "2513", "2547", "2470"];
 
         const PROJETOS_NOMES_CUSTOM = {
             "404": "Solinero MX — Projeto 404",
@@ -273,7 +273,6 @@
             setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
         }
 
-        // DISPOSITIVO DE TRIAGEM ESTREITA: Varre o texto e só aceita um dos 4 projetos oficiais
         function extractProjectId(campaignName) {
             if (!campaignName) return null;
             for (let id of LISTA_PROJETOS_OFICIAIS) {
@@ -281,7 +280,7 @@
                     return id;
                 }
             }
-            return null; // Descarta códigos fantasmas (102, 107, 108...)
+            return null; 
         }
 
         function limparEFormatarData(rawDate) {
@@ -310,6 +309,19 @@
             return null;
         }
 
+        // DISPOSITIVO DE EXTRAÇÃO ANTI-QUEBRA DE VÍRGULAS (Isola as aspas de decimais)
+        function dividirLinhaCSV(line, separador) {
+            const cols = []; let current = ""; let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') inQuotes = !inQuotes;
+                else if (char === separador && !inQuotes) { cols.push(current.trim()); current = ""; }
+                else current += char;
+            }
+            cols.push(current.trim());
+            return cols;
+        }
+
         function processarTextoCSV(csvText) {
             const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== "");
             if (lines.length === 0) return false;
@@ -317,7 +329,7 @@
             const cabecalhoTeste = lines[0] || "";
             const separador = cabecalhoTeste.includes(";") ? ";" : ",";
 
-            let headerCols = cabecalhoTeste.split(separador).map(c => c.toLowerCase().trim());
+            let headerCols = dividirLinhaCSV(lines[0], separador).map(c => c.toLowerCase().trim());
             let dataIdx = headerCols.findIndex(c => c.includes("data") || c.includes("date") || c.includes("dia"));
             let campIdx = headerCols.findIndex(c => c.includes("campanha") || c.includes("identificador") || c.includes("id") || c.includes("broadcast") || c.includes("projeto"));
             let spamIdx = headerCols.findIndex(c => c.includes("spam") || c.includes("taxa") || c.includes("%"));
@@ -331,19 +343,20 @@
             let registros = 0;
 
             dataLines.forEach((line) => {
-                const cols = line.split(separador).map(c => c.trim().replace(/^"|"$/g, ''));
+                const cols = dividirLinhaCSV(line, separador);
                 if (cols.length <= Math.max(dataIdx, spamIdx)) return;
 
-                const rawDate = cols[dataIdx];
-                const rawCampaign = cols[campIdx];
-                const rawSpam = cols[spamIdx];
+                const rawDate = cols[dataIdx].replace(/^"|"$/g, '').trim();
+                const rawCampaign = cols[campIdx].replace(/^"|"$/g, '').trim();
+                const rawSpam = cols[spamIdx].replace(/^"|"$/g, '').trim();
 
                 const projId = extractProjectId(rawCampaign);
-                if (!projId) return; // Filtra e ignora a linha se não pertencer aos 4 oficiais
+                if (!projId) return; 
 
                 const dateFormatted = limparEFormatarData(rawDate);
                 if (!dateFormatted || !rawSpam) return;
 
+                // Normaliza perfeitamente floats com formato europeu/brasileiro ("0,25")
                 let spamVal = parseFloat(rawSpam.replace("%", "").replace(",", "."));
                 if (isNaN(spamVal)) return;
                 if (spamVal > 0 && spamVal < 0.05 && !rawSpam.includes("%")) spamVal = spamVal * 100;
@@ -549,6 +562,13 @@
             });
         }
 
+        function silverwareFiltro(val) {
+            if (DADOS.activeFilter === "aprovado") return val <= 0.10;
+            if (DADOS.activeFilter === "otimizar") return val > 0.10 && val < 0.30;
+            if (DADOS.activeFilter === "remover") return val >= 0.30;
+            return true;
+        }
+
         function alterarFiltroCampanha(filtro) { DADOS.activeFilter = filtro; document.querySelectorAll(".btn-filter").forEach(btn => btn.classList.remove("active-filter")); document.getElementById(`btn-filt-${filtro}`).classList.add("active-filter"); renderDashboardCompleto(false); }
 
         function renderDashboardCompleto(atualizarSpamDia = true) {
@@ -570,20 +590,18 @@
             document.getElementById("cnt-otimizar").innerText = campanhasProjetos.filter(c => c.spam > 0.10 && c.spam < 0.30).length;
             document.getElementById("cnt-remover").innerText = campanhasProjetos.filter(c => c.spam >= 0.30).length;
 
-            let campanhasExibidas = [...campanhasProjetos];
-            if (DADOS.activeFilter === "aprovado") campanhasExibidas = campanhasExibidas.filter(c => c.spam <= 0.10);
-            else if (DADOS.activeFilter === "otimizar") campanhasExibidas = campanhasExibidas.filter(c => c.spam > 0.10 && c.spam < 0.30);
-            else if (DADOS.activeFilter === "remover") campanhasExibidas = campanhasExibidas.filter(c => c.spam >= 0.30);
+            let campanhasExibidas = campanhasProjetos.filter(c => silverwareFiltro(c.spam));
 
             const tbody = document.getElementById("tabela-broadcast-dados").querySelector("tbody");
             if(campanhasExibidas.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:24px;">Nenhum disparo localizado para o projeto selecionado na faixa cronológica atual.</td></tr>`;
             } else {
+                // INJEÇÃO HISTÓRICA DE EMOJIS CONFORME SOLICITADO
                 tbody.innerHTML = campanhasExibidas.map(c => {
-                    let label = c.spam <= 0.10 ? "Aprovado" : (c.spam < 0.30 ? "Otimizar" : "Remover");
+                    let label = c.spam <= 0.10 ? "🟢 Aprovado" : (c.spam < 0.30 ? "🟡 Otimizar" : "🔴 Remover");
                     let dataCurta = c.data.split('/')[0] + '/' + c.data.split('/')[1];
                     return `<tr class="row-clicavel" onclick="inspecionarCampanhaRow(this, '${c.id}', '${c.data}', ${c.spam})">
-                        <td><strong>${dataCurta}</strong></td><td style="color:#028090; font-weight:500;">${c.id}</td><td style="font-weight:700;">${c.spam.toFixed(2)}%</td><td>${label}</td>
+                        <td><strong>${dataCurta}</strong></td><td style="color:#028090; font-weight:500;">${c.id}</td><td style="font-weight:700;">${c.spam.toFixed(2)}%</td><td><strong>${label}</strong></td>
                     </tr>`;
                 }).join('');
             }
@@ -627,6 +645,9 @@
 
             if (activeCharts.gSpamDia) activeCharts.gSpamDia.destroy();
             try {
+                // Captura a maior taxa de spam real para forçar o gráfico a crescer proporcionalmente
+                let maxRealValue = Math.max(...valores, 0.10);
+
                 activeCharts.gSpamDia = new Chart(document.getElementById('gSpamDia'), {
                     type: 'line',
                     data: { 
@@ -652,7 +673,7 @@
                     options: { 
                         responsive: true, 
                         maintainAspectRatio: false,
-                        scales: { y: { beginAtZero: true, suggestedMax: 0.10 } }
+                        scales: { y: { beginAtZero: true, max: maxRealValue + (maxRealValue * 0.1) } }
                     }
                 });
             } catch(e) {}
