@@ -147,7 +147,7 @@
     <div class="container">
         <header>
             <div class="header-title">
-                <h1 id="txt-header-titulo">Carregando...</h1>
+                <h1 id="txt-header-titulo">Carregando painel analítico...</h1>
                 <p>Métricas Consolidadas de Performance Operacional e Entregabilidade</p>
             </div>
             <div class="header-controls">
@@ -253,7 +253,6 @@
             "2547": "Projeto 2547 (MX05-JBT)"
         };
 
-        // Dados de segurança para inicialização limpa
         let LOGS_PLANILHA = {};
 
         const DADOS = { activeProjectId: "404", activePreset: "7d", activeFilter: "todos", startDate: null, endDate: null, projetosConfig: {} };
@@ -275,7 +274,6 @@
             setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
         }
 
-        // Extrator inteligente: Prioriza os IDs cadastrados antes de aceitar regex genérico
         function extractProjectId(campaignName) {
             if (!campaignName) return null;
             const conhecidos = Object.keys(PROJETOS_METADATA);
@@ -286,11 +284,28 @@
             return match ? match[1] : null;
         }
 
+        // NOVO TRATAMENTO UNIVERSAL DE DATAS (Corrige o sumiço pós dia 01/06)
+        function limparEFormatarData(rawDate) {
+            if (!rawDate) return null;
+            let limpo = rawDate.trim().replace(/-/g, '/');
+            let partes = limpo.split('/');
+            
+            if (partes.length >= 2) {
+                let dia, mes;
+                if (partes[0].length === 4) { // Formato YYYY/MM/DD
+                    dia = partes[2]; mes = partes[1];
+                } else { // Formatos DD/MM/YYYY ou DD/MM
+                    dia = partes[0]; mes = partes[1];
+                }
+                return `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}`;
+            }
+            return null;
+        }
+
         function processarTextoCSV(csvText) {
             const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== "");
             if (lines.length === 0) return false;
 
-            // ANALISADOR CORPORATIVO DE SEPARADOR REGIONAL: Detecta se a planilha usa , ou ;
             const cabecalhoTeste = lines[0] || "";
             const separador = (cabecalhoTeste.split(';').length > cabecalhoTeste.split(',').length) ? ';' : ',';
 
@@ -303,17 +318,7 @@
                 }
             }
             
-            if (headerIdx === -1) {
-                for (let i = 0; i < lines.length; i++) {
-                    const cols = lines[i].split(separador);
-                    if (cols.length >= 3 && (/^\d{4}-\d{2}-\d{2}$/.test(cols[0].trim()) || /^\d{2}\/\d{2}\/\d{4}$/.test(cols[0].trim()) || /^\d{2}\/\d{2}$/.test(cols[0].trim()))) {
-                        headerIdx = i - 1;
-                        break;
-                    }
-                }
-            }
-
-            if (headerIdx === -1) return false;
+            if (headerIdx === -1) headerIdx = 0;
 
             const dataLines = lines.slice(headerIdx + 1);
             const novosLogs = {};
@@ -331,17 +336,8 @@
 
                 if (cols.length < 3) return;
                 const rawDate = cols[0]; const rawCampaign = cols[1]; const rawSpam = cols[2];
-                if (!rawDate || !rawCampaign || !rawSpam) return;
-
-                let dateFormatted = "";
-                if (rawDate.includes("-")) {
-                    const parts = rawDate.split("-");
-                    if(parts[0].length === 4) dateFormatted = `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}`;
-                } else if (rawDate.includes("/")) {
-                    const parts = rawDate.split("/");
-                    dateFormatted = `${parts[0].padStart(2, '0')}/${parts[1].padStart(2, '0')}`;
-                }
-
+                
+                const dateFormatted = limparEFormatarData(rawDate);
                 if (!dateFormatted) return;
 
                 let spamVal = parseFloat(rawSpam.replace("%", "").replace(",", "."));
@@ -413,7 +409,6 @@
                 };
             }
 
-            // AUTO-PIVOT DE PROJETO: Se o projeto atual não existir na planilha nova, foca no primeiro encontrado
             const idsDisponiveis = Object.keys(DADOS.projetosConfig);
             if (idsDisponiveis.length > 0 && !idsDisponiveis.includes(DADOS.activeProjectId)) {
                 DADOS.activeProjectId = idsDisponiveis[0];
@@ -435,17 +430,15 @@
                 if (!response.ok) throw new Error();
                 const csvText = await response.text();
                 
-                const processadoComSucesso = processarTextoCSV(csvText);
-                if (processadoComSucesso) {
+                if (processarTextoCSV(csvText)) {
                     showToast("Sincronizado com sucesso com o Google Sheets.", "success");
                     document.getElementById("banner-alerta-local").style.display = "none";
                 } else {
-                    showToast("Planilha lida, mas nenhuma coluna válida de dados foi encontrada.", "error");
+                    showToast("Planilha vazia ou com cabeçalhos inválidos.", "error");
                 }
             } catch (error) {
-                console.warn("Bloqueio de CORS local detectado ou erro de rede.");
                 document.getElementById("banner-alerta-local").style.display = "block";
-                showToast("Navegador bloqueou conexão local. Use o arquivo manual para testar.", "error");
+                showToast("Bloqueio de CORS local. Use o arquivo manual para rodar direto do PC.", "error");
             } finally {
                 btn.disabled = false; btn.innerText = "🔄 Sincronizar Sheets";
             }
@@ -460,7 +453,7 @@
                     showToast("Planilha manual processada com sucesso!", "success");
                     document.getElementById("banner-alerta-local").style.display = "none";
                 } else {
-                    showToast("Formato inválido. Verifique os títulos de coluna da planilha.", "error");
+                    showToast("Arquivo inválido. Verifique as colunas.", "error");
                 }
             };
             reader.readAsText(file);
@@ -468,7 +461,7 @@
 
         function getAnchorDate() {
             let dates = Object.keys(LOGS_PLANILHA);
-            if (dates.length === 0) return new Date(2026, 5, 1);
+            if (dates.length === 0) return new Date(2026, 5, 6);
             let maxDate = null;
             dates.forEach(dStr => {
                 let parts = dStr.split("/");
@@ -514,7 +507,7 @@
 
         function buildCalendarGrids() {
             let dates = Object.keys(LOGS_PLANILHA); let months = [];
-            if (dates.length === 0) months = [{ month: 4, year: 2026 }, { month: 5, year: 2026 }];
+            if (dates.length === 0) months = [{ month: 5, year: 2026 }];
             else {
                 let uniqueMonths = {}; dates.forEach(dStr => { let parts = dStr.split("/"); uniqueMonths[`${parseInt(parts[1]) - 1}-2026`] = { month: parseInt(parts[1]) - 1, year: 2026 }; });
                 months = Object.values(uniqueMonths).sort((a,b) => a.month - b.month);
@@ -564,9 +557,14 @@
                 }
             }
 
-            // SEPARAÇÃO E FILTRAGEM ESTRITA POR PROJETO ATIVO
             let campanhasProjetos = rawList.filter(c => extractProjectId(c.id) === projId);
             
+            // ORDENAÇÃO RIGOROSA CRESCENTE DA TABELA (Mais antigo para o mais recente)
+            campanhasProjetos.sort((a,b) => {
+                let ptsA = a.data.split("/"); let ptsB = b.data.split("/");
+                return new Date(2026, parseInt(ptsA[1])-1, parseInt(ptsA[0])) - new Date(2026, parseInt(ptsB[1])-1, parseInt(ptsB[0]));
+            });
+
             document.getElementById("cnt-todos").innerText = campanhasProjetos.length;
             document.getElementById("cnt-aprovado").innerText = campanhasProjetos.filter(c => c.spam <= 0.10).length;
             document.getElementById("cnt-otimizar").innerText = campanhasProjetos.filter(c => c.spam > 0.10 && c.spam < 0.30).length;
@@ -604,6 +602,7 @@
             document.getElementById("painel-auditoria-avancada").style.display = "block";
         }
 
+        // GRÁFICO INTEIRAMENTE CORRIGIDO COM ORDENAÇÃO CRESCENTE E FILTRAGEM MODERNA
         function renderCharts() {
             const projId = DADOS.activeProjectId;
             
@@ -613,6 +612,7 @@
                 if (temLogDoProjeto) datasDoProjeto.push(k);
             });
 
+            // GARANTE ORDEM CRESCENTE VISUAL NO GRÁFICO (Esquerda -> Direita)
             datasDoProjeto.sort((a,b) => { 
                 let ptsA = a.split("/"); let ptsB = b.split("/"); 
                 return new Date(2026, parseInt(ptsA[1])-1, parseInt(ptsA[0])) - new Date(2026, parseInt(ptsB[1])-1, parseInt(ptsB[0])); 
