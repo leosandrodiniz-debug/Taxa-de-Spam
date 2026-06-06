@@ -247,9 +247,9 @@
     <div id="custom-toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 8px;"></div>
 
     <script>
-        // MAPA DE ABAS DO GOOGLE SHEETS (Associei o ID 2513 ao seu GID de teste enviado)
+        // CADASTRO DE GIDs: Insira o número do gid de cada aba correspondente aqui
         const PROJETOS_GIDS = {
-            "2513": "599913369", 
+            "2513": "599913369", // Já travado no GID que você enviou!
             "404": "COLOQUE_O_GID_DA_ABA_404", 
             "2470": "COLOQUE_O_GID_DA_ABA_2470", 
             "2547": "COLOQUE_O_GID_DA_ABA_2547"
@@ -280,7 +280,7 @@
                 toast.innerHTML = `<span>⚠️</span> <span>${message}</span>`;
             }
             container.appendChild(toast);
-            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 5000);
         }
 
         function extractProjectId(campaignName) {
@@ -332,7 +332,7 @@
             let headerIdx = -1;
             for (let i = 0; i < lines.length; i++) {
                 const lineLower = lines[i].toLowerCase();
-                if (lineLower.includes("data") || lineLower.includes("campanha") || lineLower.includes("identificador") || lineLower.includes("spam")) {
+                if (lineLower.includes("data") || lineLower.includes("campanha") || lineLower.includes("identificador") || lineLower.includes("spam") || lineLower.includes("broadcast")) {
                     headerIdx = i;
                     break;
                 }
@@ -340,9 +340,9 @@
             if (headerIdx === -1) headerIdx = 0;
 
             const headerCols = dividirLinhaCSV(lines[headerIdx], separador).map(c => c.toLowerCase());
-            let dataColIdx = headerCols.findIndex(c => c.includes("data"));
+            let dataColIdx = headerCols.findIndex(c => c.includes("data") || c.includes("date"));
             let campanhaColIdx = headerCols.findIndex(c => c.includes("campanha") || c.includes("identificador") || c.includes("id") || c.includes("broadcast"));
-            let spamColIdx = headerCols.findIndex(c => c.includes("spam") || c.includes("taxa"));
+            let spamColIdx = headerCols.findIndex(c => c.includes("spam") || c.includes("taxa") || c.includes("%"));
 
             if (dataColIdx === -1) dataColIdx = 0;
             if (campanhaColIdx === -1) campanhaColIdx = 1;
@@ -351,13 +351,12 @@
             const dataLines = lines.slice(headerIdx + 1);
             const currentProjId = DADOS.activeProjectId;
 
-            // Limpa o cache do projeto ativo atual antes de alimentar
             for (let data in LOGS_PLANILHA) {
                 LOGS_PLANILHA[data] = LOGS_PLANILHA[data].filter(c => c.projId !== currentProjId);
                 if (LOGS_PLANILHA[data].length === 0) delete LOGS_PLANILHA[data];
             }
 
-            const novosLogs = {}; // DECLARAÇÃO INTEGRADA COM SUCESSO
+            const novosLogs = {}; 
             let registrosContabilizados = 0;
 
             dataLines.forEach(line => {
@@ -376,11 +375,8 @@
 
                 if (spamVal > 0 && spamVal < 0.05 && !rawSpam.includes("%")) spamVal = spamVal * 100;
 
-                // Vínculo Direto: Se estamos na aba do projeto X, as linhas pertencem a ele!
-                const projId = currentProjId; 
-
                 if (!novosLogs[dateFormatted]) novosLogs[dateFormatted] = [];
-                novosLogs[dateFormatted].push({ id: rawCampaign, spam: spamVal, projId: projId });
+                novosLogs[dateFormatted].push({ id: rawCampaign, spam: spamVal, projId: currentProjId });
                 registrosContabilizados++;
             });
 
@@ -480,10 +476,313 @@
                 if (!response.ok) throw new Error();
                 const csvText = await response.text();
                 
+                // SISTEMA ANTI-ERRO: Bloqueia e avisa se o link retornado for uma página da web (pubhtml)
+                if (csvText.includes("<html") || csvText.includes("<!DOCTYPE")) {
+                    showToast("ERRO DE CONFIGURAÇÃO: A aba no Google Sheets foi publicada como 'Página da Web'. Altere para 'Valores separados por vírgula (.csv)' no menu 'Link' da planilha.", "error");
+                    btn.disabled = false; btn.innerText = "🔄 Sincronizar Sheets";
+                    reconstruirProjetosEAbas();
+                    return;
+                }
+                
                 if (processarTextoCSV(csvText)) {
-                    showToast(`Aba do Projeto ${currentProjId} sincronizada!`, "success");
+                    showToast(`Aba do Projeto ${currentProjId} sincronizada com sucesso!`, "success");
                     document.getElementById("banner-alerta-local").style.display = "none";
                 } else {
-                    showToast("Planilha vazia ou colunas inválidas.", "error");
+                    showToast("Planilha vazia ou com formato incorreto.", "error");
                 }
             } catch (error) {
+                document.getElementById("banner-alerta-local").style.display = "block";
+                showToast("Bloqueio de CORS detectado.", "error");
+                reconstruirProjetosEAbas();
+            } finally {
+                btn.disabled = false; btn.innerText = "🔄 Sincronizar Sheets";
+            }
+        }
+
+        function processarBypassManual(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if (processarTextoCSV(e.target.result)) {
+                    showToast("Planilha manual processada com sucesso!", "success");
+                    document.getElementById("banner-alerta-local").style.display = "none";
+                } else {
+                    showToast("Arquivo inválido.", "error");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function getAnchorDate() {
+            let dates = Object.keys(LOGS_PLANILHA);
+            if (dates.length === 0) return new Date(2026, 5, 6);
+            let maxDate = null;
+            dates.forEach(dStr => {
+                let parts = dStr.split("/");
+                let d = new Date(2026, parseInt(parts[1]) - 1, parseInt(parts[0]));
+                if (!maxDate || d > maxDate) maxDate = d;
+            });
+            return maxDate;
+        }
+
+        function updateActiveDateRange() {
+            const anchor = getAnchorDate();
+            if (DADOS.activePreset === "custom") return;
+            DADOS.endDate = new Date(anchor);
+            if (DADOS.activePreset === "hoje") DADOS.startDate = new Date(anchor);
+            else if (DADOS.activePreset === "ontem") { let y = new Date(anchor); y.setDate(y.getDate() - 1); DADOS.startDate = y; DADOS.endDate = y; }
+            else if (DADOS.activePreset === "7d") { let s = new Date(anchor); s.setDate(s.getDate() - 6); DADOS.startDate = s; }
+            else if (DADOS.activePreset === "30d") { let s = new Date(anchor); s.setDate(s.getDate() - 29); DADOS.startDate = s; }
+            else if (DADOS.activePreset === "mes") DADOS.startDate = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+        }
+
+        function toggleDatePickerPanel(event) { event.stopPropagation(); const p = document.getElementById("modal-datepicker-interface"); p.style.display = p.style.display === "grid" ? "none" : "grid"; }
+        function selectPreset(preset) { DADOS.activePreset = preset; selectPresetDisplay(); }
+        function selectPresetDisplay() {
+            updateActiveDateRange();
+            document.getElementById("txt-faixa-ativa-label").innerText = DADOS.activePreset === "7d" ? "Últimos 7 dias" : `Período Ativo (${DADOS.activePreset})`;
+            refreshCalendarUI(); renderDashboardCompleto(); document.getElementById("modal-datepicker-interface").style.display = "none";
+        }
+        function selectSpecificDay(day, month, year, element) {
+            const clickedDate = new Date(year, parseInt(month) - 1, day);
+            if (!DADOS.startDate || (DADOS.startDate && DADOS.endDate)) { DADOS.startDate = clickedDate; DADOS.endDate = null; DADOS.activePreset = "custom"; }
+            else { if (clickedDate >= DADOS.startDate) { DADOS.endDate = clickedDate; document.getElementById("modal-datepicker-interface").style.display = "none"; } else DADOS.startDate = clickedDate; }
+            refreshCalendarUI(); renderDashboardCompleto();
+        }
+        function formatDateString(date) { return String(date.getDate()).padStart(2, '0') + '/' + String(date.getMonth() + 1).padStart(2, '0'); }
+        function refreshCalendarUI() {
+            document.querySelectorAll(".day-cell:not(.adj-month)").forEach(cell => {
+                const day = parseInt(cell.getAttribute("data-day")); const month = parseInt(cell.getAttribute("data-month")); const cellDate = new Date(2026, month - 1, day);
+                cell.classList.remove("selected-day");
+                if (DADOS.startDate && !DADOS.endDate && cellDate.getTime() === DADOS.startDate.getTime()) cell.classList.add("selected-day");
+                else if (DADOS.startDate && DADOS.endDate && cellDate >= DADOS.startDate && cellDate <= DADOS.endDate) cell.classList.add("selected-day");
+            });
+        }
+
+        // CRIAÇÃO DA GRADE DE CALENDÁRIO
+        function buildCalendarGrids() {
+            let dates = Object.keys(LOGS_PLANILHA); let months = [];
+            if (dates.length === 0) months = [{ month: 5, year: 2026 }];
+            else {
+                let uniqueMonths = {}; dates.forEach(dStr => { let parts = dStr.split("/"); uniqueMonths[`${parseInt(parts[1]) - 1}-2026`] = { month: parseInt(parts[1]) - 1, year: 2026 }; });
+                months = Object.values(uniqueMonths).sort((a,b) => a.month - b.month);
+            }
+            const calendarArea = document.querySelector(".panel-calendar-area"); calendarArea.innerHTML = "";
+            const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            
+            months.forEach(mObj => {
+                let monthDiv = document.createElement("div"); monthDiv.className = "month-view";
+                let titleDiv = document.createElement("div"); titleDiv.className = "month-title"; titleDiv.innerText = `${monthNames[mObj.month]} ${mObj.year}`; monthDiv.appendChild(titleDiv);
+                let weekGrid = document.createElement("div"); weekGrid.className = "week-grid";
+                ["dom", "seg", "ter", "qua", "qui", "sex", "sab"].forEach(wd => { let wdDiv = document.createElement("div"); wdDiv.className = "week-day"; wdDiv.innerText = wd; weekGrid.appendChild(wdDiv); });
+                monthDiv.appendChild(weekGrid);
+                let daysGrid = document.createElement("div"); daysGrid.className = "days-grid";
+                let firstDay = new Date(mObj.year, mObj.month, 1).getDay(); let daysInMonth = new Date(mObj.year, mObj.month + 1, 0).getDate();
+                for (let i = 0; i < firstDay; i++) { let dayCell = document.createElement("div"); dayCell.className = "day-cell adj-month"; dayCell.innerText = ""; daysGrid.appendChild(dayCell); }
+                for (let d = 1; d <= daysInMonth; d++) {
+                    let dayCell = document.createElement("div"); dayCell.className = "day-cell"; dayCell.setAttribute("data-day", d); dayCell.setAttribute("data-month", mObj.month + 1); dayCell.innerText = d;
+                    dayCell.onclick = function() { selectSpecificDay(d, String(mObj.month + 1).padStart(2,'0'), mObj.year, dayCell); }; daysGrid.appendChild(dayCell);
+                }
+                monthDiv.appendChild(daysGrid); calendarArea.appendChild(monthDiv);
+            });
+            refreshCalendarUI();
+        }
+
+        function changeProject(id) { 
+            DADOS.activeProjectId = id; 
+            localStorage.setItem("lastProjectViewed", id); 
+
+            document.querySelectorAll(".hub-card").forEach(c => c.classList.remove("active-main")); 
+            const card = document.querySelector(`[data-id="${id}"]`); 
+            if (card) card.classList.add("active-main"); 
+            
+            document.getElementById("txt-header-titulo").innerText = PROJETOS_METADATA[id] || `Projeto ${id}`; 
+            document.getElementById("painel-auditoria-avancada").style.display = "none"; 
+            DADOS.activeFilter = "todos"; 
+            
+            sincronizarGoogleSheets(); 
+        }
+
+        function alterarFiltroCampanha(filtro) { DADOS.activeFilter = filtro; document.querySelectorAll(".btn-filter").forEach(btn => btn.classList.remove("active-filter")); let targetId = filtro === "aprovado" ? "btn-filt-aprovado" : (filtro === "otimizar" ? "btn-filt-otimizar" : (filtro === "remover" ? "btn-filt-remover" : "btn-filt-todos")); document.getElementById(targetId).classList.add("active-filter"); renderDashboardCompleto(false); }
+
+        function renderDashboardCompleto(atualizarSpamDia = true) {
+            const tPreset = DADOS.activePreset; const projId = DADOS.activeProjectId; let rawList = [];
+            if (tPreset === "custom" && DADOS.startDate) {
+                let start = new Date(DADOS.startDate.getFullYear(), DADOS.startDate.getMonth(), DADOS.startDate.getDate());
+                let end = DADOS.endDate ? new Date(DADOS.endDate.getFullYear(), DADOS.endDate.getMonth(), DADOS.endDate.getDate()) : start;
+                Object.keys(LOGS_PLANILHA).forEach(k => {
+                    let parts = k.split("/"); let cDate = new Date(2026, parseInt(parts[1]) - 1, parseInt(parts[0]));
+                    if (cDate >= start && cDate <= end) LOGS_PLANILHA[k].forEach(item => rawList.push({ data: k, id: item.id, spam: item.spam, projId: item.projId }));
+                });
+            } else {
+                updateActiveDateRange();
+                if (DADOS.startDate && DADOS.endDate) {
+                    let current = new Date(DADOS.startDate);
+                    while (current <= DADOS.endDate) {
+                        let k = formatDateString(current);
+                        if (LOGS_PLANILHA[k]) LOGS_PLANILHA[k].forEach(item => rawList.push({ data: k, id: item.id, spam: item.spam, projId: item.projId }));
+                        current.setDate(current.getDate() + 1);
+                    }
+                }
+            }
+
+            let campanhasProjetos = rawList.filter(c => c.projId === projId);
+            
+            campanhasProjetos.sort((a,b) => {
+                let ptsA = a.data.split("/"); let ptsB = b.data.split("/");
+                return new Date(2026, parseInt(ptsA[1])-1, parseInt(ptsA[0])) - new Date(2026, parseInt(ptsB[1])-1, parseInt(ptsB[0]));
+            });
+
+            document.getElementById("cnt-todos").innerText = campanhasProjetos.length;
+            document.getElementById("cnt-aprovado").innerText = campanhasProjetos.filter(c => c.spam <= 0.10).length;
+            document.getElementById("cnt-otimizar").innerText = campanhasProjetos.filter(c => c.spam > 0.10 && c.spam < 0.30).length;
+            document.getElementById("cnt-remover").innerText = campanhasProjetos.filter(c => c.spam >= 0.30).length;
+
+            let campanhasExibidas = [...campanhasProjetos];
+            if (DADOS.activeFilter === "aprovado") campanhasExibidas = campanhasExibidas.filter(c => c.spam <= 0.10);
+            else if (DADOS.activeFilter === "otimizar") campanhasExibidas = campanhasExibidas.filter(c => c.spam > 0.10 && c.spam < 0.30);
+            else if (DADOS.activeFilter === "remover") campanhasExibidas = campanhasExibidas.filter(c => c.spam >= 0.30);
+
+            const tbody = document.getElementById("tabela-broadcast-dados").querySelector("tbody");
+            if(campanhasExibidas.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:24px;">Nenhuma campanha ativa para o Projeto ${projId} neste período (Aba vazia).</td></tr>`;
+            } else {
+                tbody.innerHTML = campanhasExibidas.map(c => {
+                    let statusLabel = c.spam <= 0.10 ? "Aprovado" : (c.spam < 0.30 ? "Otimizar" : "Remover");
+                    return `<tr class="row-clicavel" onclick="inspecionarCampanhaRow(this, '${c.id}', '${c.data}', ${c.spam})">
+                        <td style="color: #64748B;">${c.data}</td><td style="color: #028090; font-weight: 500;">${c.id}</td><td>${c.spam.toFixed(2)}%</td><td style="font-weight: 600;">${statusLabel}</td>
+                    </tr>`;
+                }).join('');
+            }
+            if (DADOS.projetosConfig[projId]) renderInsights();
+            if (atualizarSpamDia) renderCharts();
+        }
+
+        function renderInsights() {
+            const projId = DADOS.activeProjectId; const spamMedio = DADOS.projetosConfig[projId]?.mediaSpam || null;
+            document.getElementById("caixa-insights-postmaster").innerHTML = `<div><strong>💡 AUDITORIA DE ENTREGABELIDADE: PROJETO ${projId}</strong><p style="font-size:12px;">Média sanitária atual do Postmaster em: ${spamMedio !== null ? spamMedio.toFixed(3) + '%' : 'Aguardando sincronização de aba...'}.</p></div>`;
+        }
+
+        function inspecionarCampanhaRow(element, idCampanha, dataCampanha, spamAtual) {
+            document.querySelectorAll(".row-clicavel").forEach(r => r.classList.remove("row-selected")); 
+            element.classList.add("row-selected");
+            
+            document.getElementById("txt-titulo-inspecao").innerText = `🔍 Diagnóstico Técnico do Lote: ${idCampanha}`;
+            
+            let statusBadge = "";
+            let planoAcao = "";
+            
+            if (spamAtual >= 0.30) {
+                statusBadge = "<span class='badge-status badge-ruim'>🔴 CRÍTICO (REMOVER)</span>";
+                planoAcao = "<strong>MEDIDA DE EMERGÊNCIA:</strong> Pausar imediatamente disparos semelhantes usando este remetente. Taxa acima do limite do Postmaster. Necessário rodar uma higienização rigorosa na lista de leads frios e verificar se o IP caiu em Blacklist antes de reativar.";
+            } else if (spamAtual >= 0.10) {
+                statusBadge = "<span class='badge-status badge-medio'>🟡 ATENÇÃO (OTIMIZAR)</span>";
+                planoAcao = "<strong>AÇÃO CORRETIVA:</strong> Margem de atenção detectada. Reduzir o volume de e-mails enviados por hora (Throttling). Revisar urgentemente a linha de assunto para remover termos comerciais agressivos que acionam filtros de spam mecânicos.";
+            } else {
+                statusBadge = "<span class='badge-status badge-bom'>🟢 EXCELENTE (APROVADO)</span>";
+                planoAcao = "<strong>STATUS NOMINAL:</strong> Performance sanitária exemplar. Reputação do domínio segura. Volume totalmente liberado para escalabilidade de entregas diárias sem restrições técnicas.";
+            }
+            
+            document.getElementById("tabela-inspecao-kpis").innerHTML = `
+                <tr>
+                    <td><strong>ID Identificador Corporativo</strong></td>
+                    <td><code style="color:var(--teal); font-weight:700;">${idCampanha}</code></td>
+                    <td>Lote disparado e catalogado oficialmente no sistema na data de <strong>${dataCampanha}</strong>.</td>
+                </tr>
+                <tr>
+                    <td><strong>Taxa de Reclamação (Spam)</strong></td>
+                    <td style="font-size:14px; font-weight:700; color:var(--navy-dark);">${spamAtual.toFixed(3)}%</td>
+                    <td>Status de Integridade: ${statusBadge}</td>
+                </tr>
+                <tr>
+                    <td><strong>Plano de Ação Estratégico</strong></td>
+                    <td colspan="2" style="background: #F8FAFC; color: var(--text-dark); font-size: 12.5px; padding: 16px; border-left: 4px solid var(--navy-dark);">
+                        ${planoAcao}
+                    </td>
+                </tr>
+            `;
+            
+            document.getElementById("painel-auditoria-avancada").style.display = "block";
+            document.getElementById("painel-auditoria-avancada").scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function renderCharts() {
+            const projId = DADOS.activeProjectId;
+            
+            let datasDoProjeto = [];
+            Object.keys(LOGS_PLANILHA).forEach(k => {
+                let temLogDoProjeto = LOGS_PLANILHA[k].some(l => l.projId === projId);
+                if (temLogDoProjeto) datasDoProjeto.push(k);
+            });
+
+            datasDoProjeto.sort((a,b) => { 
+                let ptsA = a.split("/"); let ptsB = b.split("/"); 
+                return new Date(2026, parseInt(ptsA[1])-1, parseInt(ptsA[0])) - new Date(2026, parseInt(ptsB[1])-1, parseInt(ptsB[0])); 
+            });
+
+            let timelineEixoSpam = datasDoProjeto.slice(-15);
+
+            if (timelineEixoSpam.length === 0) {
+                if (activeCharts.gSpamDia) activeCharts.gSpamDia.destroy();
+                return;
+            }
+
+            let valoresEixoSpam = [];
+            timelineEixoSpam.forEach(k => {
+                let logs = LOGS_PLANILHA[k] || []; 
+                let projectLogs = logs.filter(l => l.projId === projId);
+                let sum = 0; 
+                projectLogs.forEach(l => sum += l.spam);
+                valoresEixoSpam.push(parseFloat((sum / projectLogs.length).toFixed(3)));
+            });
+
+            if (activeCharts.gSpamDia) activeCharts.gSpamDia.destroy();
+            
+            try {
+                activeCharts.gSpamDia = new Chart(document.getElementById('gSpamDia'), {
+                    type: 'line',
+                    data: { 
+                        labels: timelineEixoSpam, 
+                        datasets: [
+                            { 
+                                label: 'Spam % Médio Diário', 
+                                data: valoresEixoSpam, 
+                                borderColor: '#028090', 
+                                backgroundColor: 'rgba(2, 128, 144, 0.08)',
+                                pointRadius: 5, 
+                                tension: 0.2,
+                                fill: true
+                            }, 
+                            { 
+                                label: 'Teto Crítico (0.30%)', 
+                                data: Array(timelineEixoSpam.length).fill(0.30), 
+                                borderColor: '#E63946', 
+                                borderDash: [5, 5], 
+                                pointRadius: 0,
+                                fill: false
+                            }
+                        ] 
+                    },
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                suggestedMax: 0.40,
+                                ticks: { callback: function(value) { return value.toFixed(2) + '%'; } }
+                            }
+                        }
+                    }
+                });
+            } catch(e) {}
+        }
+
+        document.addEventListener("DOMContentLoaded", function() { 
+            DADOS.activeProjectId = localStorage.getItem("lastProjectViewed") || "2513";
+            sincronizarGoogleSheets(); 
+        });
+    </script>
+</body>
+</html>
