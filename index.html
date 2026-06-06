@@ -195,21 +195,8 @@
                     <!-- Tabela Responsiva com Scroll Customizado -->
                     <div class="overflow-x-auto custom-scrollbar border border-slate-100 rounded-xl max-h-[380px]">
                         <table class="min-w-full divide-y divide-slate-100 text-left" id="historyTable">
-                            <thead class="bg-slate-50 sticky top-0 z-10">
-                                <tr>
-                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">DATA</th>
-                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-right">ENVIOS</th>
-                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">≥ 0,3</th>
-                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">H1</th>
-                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">H9</th>
-                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">H12</th>
-                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">H14</th>
-                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">H15</th>
-                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">H16</th>
-                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">H18</th>
-                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">H19</th>
-                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">H21</th>
-                                </tr>
+                            <thead class="bg-slate-50 sticky top-0 z-10" id="historyTableHeader">
+                                <!-- Cabeçalhos estruturados dinamicamente por Javascript -->
                             </thead>
                             <tbody class="divide-y divide-slate-100 bg-white" id="historyTableBody">
                                 <!-- Preenchido dinamicamente por Javascript -->
@@ -219,7 +206,7 @@
                 </section>
             </div>
 
-            <!-- ================= GRID DE GRÁFICOS COMPLEMENTARES (SOLICITADO) ================= -->
+            <!-- ================= GRID DE GRÁFICOS COMPLEMENTARES ================= -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-2">
                 
                 <!-- GRÁFICO DE BARRAS POR DIA (Volume de Envios) -->
@@ -233,7 +220,7 @@
                     </div>
                 </section>
 
-                <!-- NOVO: GRÁFICO DE LINHA - TAXA DE SPAM POR DIA (MÉDIA) -->
+                <!-- GRÁFICO DE LINHA - TAXA DE SPAM POR DIA (MÉDIA) -->
                 <section class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-4">
                     <h2 class="text-sm font-extrabold text-[#0b2240] tracking-wider uppercase flex items-center gap-2">
                         <span class="w-1.5 h-4 bg-amber-500 rounded-full"></span>
@@ -260,7 +247,7 @@
 
     </div>
 
-    <!-- BANNER DE LEGENDA DO FOOTER (Comum a ambas as telas) -->
+    <!-- BANNER DE LEGENDA DO FOOTER -->
     <footer class="mt-6 max-w-[1600px] w-full mx-auto">
         <div class="bg-[#0b2240] text-white py-3 px-6 rounded-2xl flex flex-wrap items-center justify-center gap-4 md:gap-6 text-xs font-semibold shadow-sm tracking-wide">
             <span class="flex items-center gap-2">
@@ -301,7 +288,7 @@
                 </div>
                 <div class="flex gap-2">
                     <span class="bg-[#0b2240] text-white w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] shrink-0">2</span>
-                    <span>Escolha "Planilha inteira" e mude de Página Web para <strong>Valores separados por vírgula (.csv)</strong>.</span>
+                    <span>Escolha "Planilha inteira" (ou a aba específica) e mude de Página Web para <strong>Valores separados por vírgula (.csv)</strong>.</span>
                 </div>
                 <div class="flex gap-2">
                     <span class="bg-[#0b2240] text-white w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] shrink-0">3</span>
@@ -336,12 +323,17 @@
         // Função auxiliar para analisar datas no formato DD-MM ou DD/MM de forma robusta
         function parseDateDM(str) {
             if (!str) return new Date(0);
-            // Suporta formatos com hifens, barras e espaços (ex: "24-05", "23/05", "01-06 (seg.)")
-            const match = str.match(/([0-9]{1,2})[-/]([0-9]{1,2})/);
-            if (match) {
-                const day = parseInt(match[1]);
-                const month = parseInt(match[2]) - 1; // Mês baseado em 0 no JS
-                return new Date(2026, month, day); // Fixando o ano base do projeto (2026)
+            // Remove quaisquer letras ou parênteses adicionais para limpar nomes de dias ex: "01-06 (seg.)" -> "01-06"
+            const cleanStr = String(str).replace(/[()a-zA-Záéíóuàèìòùäëïöüâêîôûñç.\s]/g, '').trim();
+            const parts = cleanStr.split(/[-/]/);
+            if (parts.length >= 2) {
+                const day = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10) - 1; // Base indexada em 0 no JS
+                let year = 2026; // Ano padrão do projeto
+                if (parts.length >= 3 && parts[2].length === 4) {
+                    year = parseInt(parts[2], 10);
+                }
+                return new Date(year, month, day);
             }
             return new Date(0);
         }
@@ -585,40 +577,64 @@
             }
         }
 
-        // Preenche as linhas da tabela de histórico diário
+        // Preenche as linhas e cabeçalhos da tabela de histórico diário de forma dinâmica
         function renderTableData(rows) {
+            const thead = document.getElementById('historyTableHeader');
             const tbody = document.getElementById('historyTableBody');
-            tbody.innerHTML = '';
+            
+            if (!rows || rows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="100%" class="text-center py-4 text-slate-400">Nenhum dado encontrado</td></tr>';
+                return;
+            }
 
-            // Ordena os dados decrescentemente (mais recente primeiro) baseados nas datas de Junho / Maio
+            // Detecta dinamicamente todas as colunas extras de campanhas que vieram da planilha
+            const allKeys = Object.keys(rows[0]);
+            const campaignKeys = allKeys.filter(k => k !== 'data' && k !== 'envios' && k !== 'ge03');
+
+            // Renderiza cabeçalhos da tabela dinamicamente
+            let headerHTML = `
+                <tr>
+                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">DATA</th>
+                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-right">ENVIOS</th>
+                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">≥ 0,3</th>
+            `;
+            campaignKeys.forEach(k => {
+                headerHTML += `<th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">${k.toUpperCase()}</th>`;
+            });
+            headerHTML += `</tr>`;
+            thead.innerHTML = headerHTML;
+
+            // Ordena os dados decrescentemente (mais recente primeiro) baseados nas datas corrigidas
             const sortedRows = [...rows].sort((a, b) => parseDateDM(b.data) - parseDateDM(a.data));
 
+            tbody.innerHTML = '';
             sortedRows.forEach(r => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition-colors";
                 
-                tr.innerHTML = `
+                let rowHTML = `
                     <td class="px-4 py-3 text-xs font-bold text-[#0b2240] whitespace-nowrap">${r.data}</td>
                     <td class="px-4 py-3 text-xs font-bold text-[#0b2240] text-right whitespace-nowrap">${r.envios}</td>
                     <td class="px-4 py-3 text-xs text-center whitespace-nowrap">${renderGe03Badge(r.ge03)}</td>
-                    <td class="px-4 py-3 text-xs font-bold text-center whitespace-nowrap ${getSpamColorClass(r.h1)}">${r.h1}</td>
-                    <td class="px-4 py-3 text-xs font-bold text-center whitespace-nowrap ${getSpamColorClass(r.h9)}">${r.h9}</td>
-                    <td class="px-4 py-3 text-xs font-bold text-center whitespace-nowrap ${getSpamColorClass(r.h12)}">${r.h12}</td>
-                    <td class="px-4 py-3 text-xs font-bold text-center whitespace-nowrap ${getSpamColorClass(r.h14)}">${r.h14}</td>
-                    <td class="px-4 py-3 text-xs font-bold text-center whitespace-nowrap ${getSpamColorClass(r.h15)}">${r.h15}</td>
-                    <td class="px-4 py-3 text-xs font-bold text-center whitespace-nowrap ${getSpamColorClass(r.h16)}">${r.h16}</td>
-                    <td class="px-4 py-3 text-xs font-bold text-center whitespace-nowrap ${getSpamColorClass(r.h18)}">${r.h18}</td>
-                    <td class="px-4 py-3 text-xs font-bold text-center whitespace-nowrap ${getSpamColorClass(r.h19)}">${r.h19}</td>
-                    <td class="px-4 py-3 text-xs font-bold text-center whitespace-nowrap ${getSpamColorClass(r.h21)}">${r.h21}</td>
                 `;
+                
+                campaignKeys.forEach(k => {
+                    const val = r[k] !== undefined ? r[k] : '—';
+                    rowHTML += `<td class="px-4 py-3 text-xs font-bold text-center whitespace-nowrap ${getSpamColorClass(val)}">${val}</td>`;
+                });
+                
+                tr.innerHTML = rowHTML;
                 tbody.appendChild(tr);
             });
         }
 
-        // Classificação de cor para percentuais de spam baseados nas novas categorias
+        // Classificação de cor para percentuais de spam baseados nas novas categorias (compatível com decimal de vírgula)
         function getSpamColorClass(val) {
             if (!val || val === "—") return "text-slate-400 font-normal";
-            const num = parseFloat(String(val).replace('%', ''));
+            const cleanVal = String(val).replace(',', '.').replace('%', '').trim();
+            const num = parseFloat(cleanVal);
+            if (isNaN(num)) return "text-slate-400 font-normal";
+            
             if (num < 0.10) {
                 return "text-[#00b489]"; 
             } else if (num >= 0.10 && num < 0.30) {
@@ -646,21 +662,13 @@
             const sortedHistory = [...proj.detalhesTabela].sort((a, b) => parseDateDM(a.data) - parseDateDM(b.data));
             const labels = sortedHistory.map(h => h.data);
 
-            // Mapeia de forma autônoma todas as chaves adicionais da planilha (ignorando colunas fixas)
+            // Mapeia de forma autônoma todas as chaves adicionais da planilha (ignorando colunas de controle)
             const keysToRender = Object.keys(proj.detalhesTabela[0]).filter(k => k !== 'data' && k !== 'envios' && k !== 'ge03');
             
             const colors = {
-                'ctr u.': '#8b5cf6',
-                'geral': '#f59e0b',
-                'h1': '#06b6d4',
-                'h9': '#a78bfa',
-                'h12': '#eab308',
-                'h14': '#ec4899',
-                'h15': '#10b981',
-                'h16': '#3b82f6',
-                'h18': '#f97316',
-                'h19': '#14b8a6',
-                'h21': '#f43f5e'
+                'ctr u.': '#8b5cf6', 'geral': '#f59e0b', 'h1': '#06b6d4', 'h9': '#a78bfa',
+                'h12': '#eab308', 'h14': '#ec4899', 'h15': '#10b981', 'h16': '#3b82f6',
+                'h18': '#f97316', 'h19': '#14b8a6', 'h21': '#f43f5e'
             };
             const defaultColors = ['#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f43f5e', '#a78bfa', '#14b8a6'];
             
@@ -673,7 +681,7 @@
                     const dataPoints = sortedHistory.map(h => {
                         const val = h[key];
                         if (val && val !== '—') {
-                            return parseFloat(String(val).replace('%', ''));
+                            return parseFloat(String(val).replace(',', '.').replace('%', '').trim());
                         }
                         return null;
                     });
@@ -746,7 +754,11 @@
             const ctxDaily = document.getElementById('dailyVolumeChart').getContext('2d');
             if (dailyVolumeChartInstance) { dailyVolumeChartInstance.destroy(); }
 
-            const dailyData = sortedHistory.map(h => parseInt(String(h.envios).replace(/\./g, '')) || 0);
+            const dailyData = sortedHistory.map(h => {
+                const cleanEnvios = String(h.envios).replace(/\./g, '').replace(/,/g, '').trim();
+                return parseInt(cleanEnvios) || 0;
+            });
+
             dailyVolumeChartInstance = new Chart(ctxDaily, {
                 type: 'bar',
                 data: {
@@ -776,7 +788,7 @@
                 }
             });
 
-            // 2. GRÁFICO DE LINHA - TAXA DE SPAM POR DIA (Média real)
+            // 2. GRÁFICO DE LINHA - TAXA DE SPAM POR DIA (Média real compatível com vírgulas)
             const ctxDailySpam = document.getElementById('dailySpamLineChart').getContext('2d');
             if (dailySpamLineChartInstance) { dailySpamLineChartInstance.destroy(); }
 
@@ -788,7 +800,8 @@
                 campaignKeys.forEach(k => {
                     const val = h[k];
                     if (val && val !== '—') {
-                        const numericVal = parseFloat(String(val).replace('%', ''));
+                        const cleanVal = String(val).replace(',', '.').replace('%', '').trim();
+                        const numericVal = parseFloat(cleanVal);
                         if (!isNaN(numericVal)) {
                             sum += numericVal;
                             count++;
@@ -843,7 +856,7 @@
                 }
             });
 
-            // 3. GRÁFICO POR CAMPANHA / HORÁRIO (Taxa média de Spam)
+            // 3. GRÁFICO POR CAMPANHA / HORÁRIO (Taxa média de Spam compatível com vírgulas)
             const ctxCampaign = document.getElementById('campaignSpamChart').getContext('2d');
             if (campaignSpamChartInstance) { campaignSpamChartInstance.destroy(); }
 
@@ -855,7 +868,8 @@
                 proj.detalhesTabela.forEach(row => {
                     const cellVal = row[key];
                     if (cellVal && cellVal !== '—') {
-                        const numericVal = parseFloat(String(cellVal).replace('%', ''));
+                        const cleanVal = String(cellVal).replace(',', '.').replace('%', '').trim();
+                        const numericVal = parseFloat(cleanVal);
                         if (!isNaN(numericVal)) {
                             sum += numericVal;
                             count++;
@@ -901,8 +915,14 @@
             });
         }
 
-        // Motor de Parsing para CSVs padrão Google Sheets
+        // Motor de Parsing para CSVs com autodeteção robusta de separador (Vírgula vs Ponto e Vírgula)
         function parseCSV(text) {
+            // Analisa a primeira linha para autodetectar o separador regional correcto
+            const firstLine = text.split('\n')[0] || '';
+            const commaCount = (firstLine.match(/,/g) || []).length;
+            const semiCount = (firstLine.match(/;/g) || []).length;
+            const delimiter = semiCount > commaCount ? ';' : ',';
+
             let lines = [];
             let row = [""];
             let inQuotes = false;
@@ -913,7 +933,7 @@
                 if (c === '"') {
                     if (inQuotes && next === '"') { row[row.length - 1] += '"'; i++; }
                     else { inQuotes = !inQuotes; }
-                } else if (c === ',' && !inQuotes) {
+                } else if (c === delimiter && !inQuotes) {
                     row.push("");
                 } else if ((c === '\r' || c === '\n') && !inQuotes) {
                     if (c === '\r' && next === '\n') { i++; }
@@ -932,6 +952,9 @@
             for (let i = 1; i < lines.length; i++) {
                 const values = lines[i];
                 if (values.length < headers.length) continue;
+                // Proteção contra linhas vazias no rodapé do CSV
+                if (values.every(v => v.trim() === "")) continue;
+
                 const rowObj = {};
                 headers.forEach((header, index) => {
                     rowObj[header] = values[index] ? values[index].trim() : "";
@@ -951,7 +974,7 @@
 
             const dataKey = findKey(['data', 'date', 'dia', 'período']);
             const enviosKey = findKey(['envios', 'volume', 'sent', 'quantidade']);
-            const ge03Key = findKey(['≥ 0,3', '>=0,3', '>=0.3', 'ge0.3', 'ge03']);
+            const ge03Key = findKey(['≥ 0,3', '>=0,3', '>=0.3', 'ge0.3', 'ge03', '>= 0.3', '>= 0,3']);
             
             return data.map(row => {
                 const mappedRow = {
@@ -962,8 +985,9 @@
                 
                 // Copia automaticamente qualquer outra coluna presente na planilha (H1, H9, CTR, etc.)
                 Object.keys(row).forEach(key => {
-                    if (key !== dataKey && key !== enviosKey && key !== ge03Key) {
-                        mappedRow[key] = row[key] || '—';
+                    const normalizedKey = key.trim().toLowerCase();
+                    if (normalizedKey !== dataKey && normalizedKey !== enviosKey && normalizedKey !== ge03Key) {
+                        mappedRow[normalizedKey] = row[key] || '—';
                     }
                 });
                 return mappedRow;
@@ -981,14 +1005,15 @@
             let spamCount = 0;
 
             table.forEach(row => {
-                const env = parseInt(String(row.envios).replace(/\./g, '')) || 0;
+                const env = parseInt(String(row.envios).replace(/\./g, '').replace(/,/g, '').trim()) || 0;
                 totalEnvios += env;
 
                 const campaignKeys = Object.keys(row).filter(k => k !== 'data' && k !== 'envios' && k !== 'ge03');
                 campaignKeys.forEach(k => {
                     const val = row[k];
                     if (val && val !== '—') {
-                        const numericVal = parseFloat(String(val).replace('%', ''));
+                        const cleanVal = String(val).replace(',', '.').replace('%', '').trim();
+                        const numericVal = parseFloat(cleanVal);
                         if (!isNaN(numericVal)) {
                             totalSpamSum += numericVal;
                             spamCount++;
@@ -1012,7 +1037,7 @@
             }
             proj.statusGeral = `${label} - ${proj.mSpam}`;
 
-            // Atualiza na tela
+            // Atualiza na tela do Dashboard
             document.getElementById('metricDias').innerText = proj.mDias;
             document.getElementById('metricEnvios').innerText = proj.mEnvios;
             document.getElementById('metricCampanhas').innerText = proj.mCampanhas;
@@ -1021,6 +1046,15 @@
             const badge = document.getElementById('dashStatusBadge');
             badge.innerText = proj.statusGeral;
             badge.className = "text-xs font-black px-4 py-2 rounded-full border tracking-wider " + getBadgeColorClass(proj.statusGeral);
+
+            // Atualiza as propriedades do Card na Home para que correspondam aos dados sincronizados
+            const sorted = [...table].sort((a, b) => parseDateDM(b.data) - parseDateDM(a.data));
+            if (sorted.length > 0) {
+                proj.ultimoDia = sorted[0].data;
+                proj.envios = sorted[0].envios;
+                proj.hojeGe03 = sorted[0].ge03;
+            }
+            renderProjectsGrid();
         }
 
         // Sincroniza dinamicamente usando a API de Fetch de CSVs e mantendo o identificador de aba (gid)
@@ -1046,10 +1080,15 @@
                 if (!response.ok) throw new Error("Erro ao carregar link.");
 
                 const csvText = await response.text();
-                const parsed = parseCSV(csvText);
                 
+                // Valida se o documento retornado é HTML de login (Planilha Privada)
+                if (csvText.includes("<!DOCTYPE html>") || csvText.includes("<html") || csvText.includes("Google-Accounts-SignIn")) {
+                    throw new Error("A planilha está privada! Altere o compartilhamento para 'Qualquer pessoa com o link pode ler' no Google Sheets.");
+                }
+
+                const parsed = parseCSV(csvText);
                 if (parsed.data.length === 0) {
-                    throw new Error("Planilha vazia ou com cabeçalho inválido.");
+                    throw new Error("Planilha vazia ou com formato inválido.");
                 }
 
                 const mappedData = mapCSVToTable(parsed);
@@ -1071,7 +1110,7 @@
                 }
             } catch (err) {
                 console.error(err);
-                showToast("Erro de leitura: certifique-se de liberar o acesso de leitura na planilha.");
+                showToast(err.message || "Erro de leitura da planilha. Verifique o link e as definições de partilha.");
                 return false;
             }
         }
@@ -1082,7 +1121,7 @@
             const content = document.getElementById('syncModalContent');
             const input = document.getElementById('sheetUrlInput');
             
-            // Sugere de forma inteligente o seu link direto se o campo estiver vazio
+            // Sugere o link exato inserido por padrão no Projeto 404
             if (!input.value.trim() && selectedProject && selectedProject.id === 404) {
                 input.value = "https://docs.google.com/spreadsheets/d/1Qad4P2nADyNtaYC1gegxFrHjzgUwanGisQ3Sv7AYbOE/edit?gid=372389848#gid=372389848";
             }
@@ -1159,7 +1198,7 @@
                 
                 activeChart.data.datasets.forEach(dataset => {
                     if (!dataset.label.includes('Teto')) {
-                        dataset.data = dataset.data.map(val => Math.min(0.55, Math.max(0.01, val * (0.8 + Math.random() * 0.4))));
+                        dataset.data = dataset.data.map(val => val !== null ? Math.min(0.55, Math.max(0.01, val * (0.8 + Math.random() * 0.4))) : null);
                     }
                 });
                 activeChart.update();
