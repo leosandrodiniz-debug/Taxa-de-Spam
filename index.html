@@ -233,8 +233,8 @@
     <div id="custom-toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 8px;"></div>
 
     <script>
-        // SEU LINK DEFINITIVO AJUSTADO E CORRIGIDO
-        const MASTER_RAW_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQzr0NHB8FBBK9r1symUNT2RO21ld25j6h7thMdOPFzuxqjJY3oncSAQjqEVgp1INZL_uusUlwo1p8N/pubhtml";
+        // SEU LINK OFICIAL CORRIGIDO DA ABA DADOS
+        const MASTER_RAW_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSePugXgmjZTIO3_a46XJCGpjDHSSSCzUDR-Jk9OkPMafPffOIVr-M23se--EiwGrr6XE08nWMnIUwf/pub?gid=372389848&single=true&output=csv";
 
         const activeCharts = { gSpamDia: null };
         const PROJETOS_METADATA = {
@@ -286,42 +286,48 @@
             return null;
         }
 
+        // MOTOR PARSER DINÂMICO E À PROVA DE FALHAS DE CABEÇALHO
         function processarTextoCSV(csvText) {
             const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== "");
             if (lines.length === 0) return false;
 
             const cabecalhoTeste = lines[0] || "";
-            const separador = (cabecalhoTeste.split(';').length > cabecalhoTeste.split(',').length) ? ';' : ',';
+            let separador = ",";
+            if (cabecalhoTeste.includes(";")) separador = ";";
+            else if (cabecalhoTeste.includes("\t")) separador = "\t";
 
             let headerIdx = 0;
             for (let i = 0; i < Math.min(lines.length, 5); i++) {
                 const lineLower = lines[i].toLowerCase();
-                if (lineLower.includes("data") || lineLower.includes("campanha") || lineLower.includes("spam") || lineLower.includes("projeto")) {
+                if (lineLower.includes("data") || lineLower.includes("campanha") || lineLower.includes("spam") || lineLower.includes("projeto") || lineLower.includes("date")) {
                     headerIdx = i;
                     break;
                 }
             }
 
             const headerCols = lines[headerIdx].split(separador).map(c => c.toLowerCase().trim());
-            let dataIdx = headerCols.findIndex(c => c.includes("data") || c.includes("date"));
+            let dataIdx = headerCols.findIndex(c => c.includes("data") || c.includes("date") || c.includes("dia"));
             let campIdx = headerCols.findIndex(c => c.includes("campanha") || c.includes("identificador") || c.includes("broadcast") || c.includes("id") || c.includes("projeto"));
-            let spamIdx = headerCols.findIndex(c => c.includes("spam") || c.includes("taxa") || c.includes("%"));
+            let spamIdx = headerCols.findIndex(c => c.includes("spam") || c.includes("taxa") || c.includes("%") || c.includes("reclam"));
 
+            // SISTEMA DE TOLERÂNCIA OPERACIONAL AUTOMÁTICO (Dedução de Colunas se falhar por nome)
             if (dataIdx === -1) dataIdx = 0;
-            if (campIdx === -1) campIdx = 1;
-            if (spamIdx === -1) spamIdx = 2;
+            if (campIdx === -1) campIdx = headerCols.length > 2 ? 1 : -1;
+            if (spamIdx === -1) spamIdx = headerCols.length > 2 ? 2 : 1;
 
             const dataLines = lines.slice(headerIdx + 1);
             const novosLogs = {};
             let registros = 0;
 
-            dataLines.forEach(line => {
+            dataLines.forEach((line, idx) => {
                 const cols = line.split(separador).map(c => c.trim().replace(/^"|"$/g, ''));
                 if (cols.length <= Math.max(dataIdx, spamIdx)) return;
 
                 const rawDate = cols[dataIdx];
-                const rawCampaign = cols[campIdx] || `Lote Mapeado (${rawDate})`;
                 const rawSpam = cols[spamIdx];
+                let rawCampaign = campIdx !== -1 ? cols[campIdx] : `Lote Automático #${idx + 1}`;
+
+                if (!rawCampaign) rawCampaign = `Lote Automático #${idx + 1}`;
 
                 const dateFormatted = limparEFormatarData(rawDate);
                 if (!dateFormatted || !rawSpam) return;
@@ -330,7 +336,8 @@
                 if (isNaN(spamVal)) return;
                 if (spamVal > 0 && spamVal < 0.05 && !rawSpam.includes("%")) spamVal = spamVal * 100;
 
-                const projId = extractProjectId(rawCampaign) || "404";
+                // Força o roteamento inteligente: se não achar ID explícito, aloca no projeto ativo da tela
+                const projId = extractProjectId(rawCampaign) || DADOS.activeProjectId;
 
                 if (!novosLogs[dateFormatted]) novosLogs[dateFormatted] = [];
                 novosLogs[dateFormatted].push({ id: rawCampaign, spam: spamVal, projId: projId });
@@ -414,11 +421,11 @@
                     showToast("Dashboard atualizado com sucesso!", "success");
                     document.getElementById("banner-alerta-local").style.display = "none";
                 } else {
-                    showToast("Formato de cabeçalhos inválido na base bruta.", "error");
+                    showToast("Formato de base de dados inválido ou vazio.", "error");
                 }
             } catch (error) {
                 document.getElementById("banner-alerta-local").style.display = "block";
-                showToast("Erro de CORS local. Use o carregamento manual para testar local.", "error");
+                showToast("Erro de rede ou CORS detectado.", "error");
             } finally {
                 btn.disabled = false; btn.innerText = "🔄 Sincronizar Base Bruta";
             }
@@ -465,6 +472,7 @@
             else if (DADOS.activePreset === "mes") DADOS.startDate = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
         }
 
+        // CONTROLADORES DE CALENDÁRIO INTERNOS
         function toggleDatePickerPanel(event) { event.stopPropagation(); const p = document.getElementById("modal-datepicker-interface"); p.style.display = p.style.display === "grid" ? "none" : "grid"; }
         function selectPreset(preset) { DADOS.activePreset = preset; updateActiveDateRange(); document.getElementById("txt-faixa-ativa-label").innerText = preset === "7d" ? "Últimos 7 dias" : `Período Ativo (${preset})`; renderDashboardCompleto(); document.getElementById("modal-datepicker-interface").style.display = "none"; }
         
@@ -523,7 +531,7 @@
 
             const tbody = document.getElementById("tabela-broadcast-dados").querySelector("tbody");
             if(campanhasExibidas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:24px;">Nenhum registro para o Projeto ${projId} neste período.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:24px;">Nenhum registro localizado para o Projeto ${projId} neste período.</td></tr>`;
             } else {
                 tbody.innerHTML = campanhasExibidas.map(c => {
                     let label = c.spam <= 0.10 ? "Aprovado" : (c.spam < 0.30 ? "Otimizar" : "Remover");
