@@ -55,7 +55,7 @@
         .hub-card.active-main { border: 2px solid var(--navy-dark); background-color: #F8FAFC; }
         .hub-indicator { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; border-top-left-radius: 10px; border-bottom-left-radius: 10px; }
 
-        /* FILTRO DE CALENDÁRIO CORPORATIVO GLOBAL MESTRE NO TOPO */
+        /* FILTRO DE CALENDÁRIO */
         .filtro-master-wrapper { display: flex; justify-content: flex-end; margin-bottom: 24px; position: relative; }
         .trigger-datepicker { 
             background: #FFFFFF; border: 1px solid var(--border-color); padding: 8px 20px; 
@@ -96,20 +96,8 @@
         .chart-card { background: white; padding: 24px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; }
         .chart-container { position: relative; height: 290px; min-height: 290px; width: 100%; }
 
-        .analise-box { background-color: #FFFDF5; border-left: 4px solid var(--alert-yellow); border-radius: 8px; padding: 16px; margin-bottom: 20px; }
-        .analise-box.erro-conexao { background-color: #FEF2F2; border-left-color: var(--alert-red); color: #991B1B; padding: 16px; margin-bottom: 20px; border-radius: 8px; }
-
-        .btn-bypass {
-            background-color: var(--purple-select); color: white; border: none; padding: 8px 16px;
-            border-radius: 20px; font-size: 12px; font-weight: 600; margin-top: 12px; cursor: pointer;
-            display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(79, 70, 229, 0.2);
-            transition: all 0.2s;
-        }
-        .btn-bypass:hover { background-color: #3b31c4; transform: translateY(-1px); }
-
-        /* BROADCAST TABLE FILTER BAR */
+        /* TABLES */
         .table-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: #F8FAFC; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px; }
-        .table-toolbar .erro-inline-msg { background: #FEF2F2; border: 1px solid #FCA5A5; color: #B91C1C; font-size: 12px; padding: 6px 12px; border-radius: 6px; font-weight: 600; }
         .table-title { font-weight: 700; color: var(--navy-dark); font-size: 11px; text-transform: uppercase; }
         
         .filter-buttons { display: flex; gap: 6px; }
@@ -120,14 +108,12 @@
         .btn-filter:hover { background: #F1F5F9; border-color: var(--text-muted); }
         .btn-filter.active-filter { background: var(--navy-dark); color: white; border-color: var(--navy-dark); }
 
-        /* BROADCAST TABLE */
         .table-container { background: white; border-radius: 12px; border: 1px solid var(--border-color); overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
         .scrollable-table { max-height: 290px; overflow-y: auto; }
         .table-project { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
         .table-project th { background: #F8FAFC; color: var(--navy-dark); padding: 12px 16px; font-size: 11px; text-transform: uppercase; border-bottom: 1px solid var(--border-color); font-weight: 700; position: sticky; top: 0; z-index: 10; }
         .table-project td { padding: 12px 16px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
 
-        /* INSPECTION BLOCK DYNAMIC */
         .secao-inspecao-container { display: none; margin-top: 24px; animation: fadeIn 0.2s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .card-inspecao-bloco { background: white; border-radius: 12px; border: 1px solid var(--border-color); padding: 24px; width: 100%; }
@@ -148,26 +134,25 @@
     <div class="container">
         <header>
             <div class="header-title">
-                <h1 id="txt-header-titulo">Carregando painel analítico...</h1>
+                <h1 id="txt-header-titulo">Geral / Executive War Room</h1>
                 <p>Métricas Consolidadas de Performance Operacional e Entregabilidade</p>
             </div>
             <div class="header-controls">
                 <button class="btn-sync" id="btn-sync-sheets" onclick="sincronizarGoogleSheets()">
-                    <span>🔄 Sincronizar Sheets</span>
+                    <span>🔄 Sincronizar Base Bruta</span>
                 </button>
                 <span class="badge-sem-aquisicao">Selo: SEM Aquisição</span>
             </div>
         </header>
 
         <div id="banner-alerta-local" style="display:none;" class="analise-box erro-conexao">
-            <strong>⚠️ RESTRIÇÃO DE REQUISIÇÃO LOCAL DETECTADA (CORS DE NAVEGADOR)</strong><br>
-            O navegador bloqueou a busca automática online porque o HTML está rodando direto do seu computador.<br>
-            <em>Não se preocupe: Esse aviso sumirá e funcionará sozinho assim que colocar no GitHub Pages ou usar o botão abaixo.</em><br>
+            <strong>⚠️ RESTRIÇÃO DE REQUISIÇÃO LOCAL (CORS) DETECTADA</strong><br>
+            O navegador bloqueou a busca automática online porque o arquivo está a rodar direto do seu computador.<br>
             <button class="btn-bypass" onclick="document.getElementById('bypass-file-input').click()">📂 Carregar arquivo CSV Manualmente (Para testar local)</button>
         </div>
 
         <section>
-            <div class="section-title">🏢 Unidades Operacionais (Detecção de Projetos Automática)</div>
+            <div class="section-title">🏢 Unidades Operacionais (Filtro Automático por Card)</div>
             <div class="grid-hub-top" id="hub-projetos-container"></div>
         </section>
 
@@ -202,7 +187,6 @@
                 <div class="table-container">
                     <div class="table-toolbar">
                         <div class="table-title">📋 Campanhas de Broadcast Auditadas</div>
-                        <div id="wrapper-status-msg"></div> 
                         <div class="filter-buttons">
                             <button class="btn-filter active-filter" id="btn-filt-todos" onclick="alterarFiltroCampanha('todos')">Todos (<span id="cnt-todos">0</span>)</button>
                             <button class="btn-filter" id="btn-filt-aprovado" onclick="alterarFiltroCampanha('aprovado')">Aprovados 🟢 (<span id="cnt-aprovado">0</span>)</button>
@@ -249,16 +233,8 @@
     <div id="custom-toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 8px;"></div>
 
     <script>
-        // ID DINÂMICO EXTRAÍDO DA SUA NOVA PLANILHA
-        const SPREADSHEET_ID = "1_zrTPZ9tehp5YmSrBXAehqwhsc5i9JOQnP3tNUdsS2o";
-
-        // CADASTRO DE GIDs (Mapeamento das abas)
-        const PROJETOS_GIDS = {
-            "2513": "599913369", // Sua aba ativa carregando perfeitamente
-            "404": "COLOQUE_O_GID_DA_ABA_404", 
-            "2470": "COLOQUE_O_GID_DA_ABA_2470", 
-            "2547": "COLOQUE_O_GID_DA_ABA_2547"
-        };
+        // LINK INTEGRADO DIRETAMENTE DA SUA IMAGEM DO GOOGLE SHEETS
+        const MASTER_RAW_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQzr0NHB8FBBK9r1symUNT2RO21ld25j6h7thMdOPFzuxqjJY3oncSAQjqEVgp1INZL_uusUlwo1p8N/pub?gid=37238948&single=true&output=csv";
 
         const activeCharts = { gSpamDia: null };
         const PROJETOS_METADATA = {
@@ -285,7 +261,7 @@
                 toast.innerHTML = `<span>⚠️</span> <span>${message}</span>`;
             }
             container.appendChild(toast);
-            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 5000);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
         }
 
         function extractProjectId(campaignName) {
@@ -302,29 +278,12 @@
             if (!rawDate) return null;
             let limpo = rawDate.trim().replace(/-/g, '/');
             let partes = limpo.split('/');
-            
             if (partes.length >= 2) {
-                let dia, mes;
-                if (partes[0].length === 4) { 
-                    dia = partes[2]; mes = partes[1];
-                } else { 
-                    dia = partes[0]; mes = partes[1];
-                }
+                let dia = partes[0].length === 4 ? partes[2] : partes[0];
+                let mes = partes[0].length === 4 ? partes[1] : partes[1];
                 return `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}`;
             }
             return null;
-        }
-
-        function dividirLinhaCSV(line, separador) {
-            const cols = []; let current = ""; let inQuotes = false;
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-                if (char === '"') inQuotes = !inQuotes;
-                else if (char === separador && !inQuotes) { cols.push(current.trim()); current = ""; }
-                else current += char;
-            }
-            cols.push(current.trim());
-            return cols;
         }
 
         function processarTextoCSV(csvText) {
@@ -337,66 +296,53 @@
             let headerIdx = 0;
             for (let i = 0; i < Math.min(lines.length, 5); i++) {
                 const lineLower = lines[i].toLowerCase();
-                if (lineLower.includes("data") || lineLower.includes("date") || lineLower.includes("spam") || lineLower.includes("taxa")) {
+                if (lineLower.includes("data") || lineLower.includes("campanha") || lineLower.includes("spam") || lineLower.includes("projeto")) {
                     headerIdx = i;
                     break;
                 }
             }
 
-            const headerCols = dividirLinhaCSV(lines[headerIdx], separador).map(c => c.toLowerCase().trim());
-            let dataColIdx = headerCols.findIndex(c => c.includes("data") || c.includes("date"));
-            let spamColIdx = headerCols.findIndex(c => c.includes("spam") || c.includes("taxa") || c.includes("%"));
-            let campanhaColIdx = headerCols.findIndex(c => c.includes("campanha") || c.includes("identificador") || c.includes("id") || c.includes("broadcast"));
+            const headerCols = lines[headerIdx].split(separador).map(c => c.toLowerCase().trim());
+            let dataIdx = headerCols.findIndex(c => c.includes("data") || c.includes("date"));
+            let campIdx = headerCols.findIndex(c => c.includes("campanha") || c.includes("identificador") || c.includes("broadcast") || c.includes("id") || c.includes("projeto"));
+            let spamIdx = headerCols.findIndex(c => c.includes("spam") || c.includes("taxa") || c.includes("%"));
 
-            if (dataColIdx === -1) dataColIdx = 0;
-            if (spamColIdx === -1) spamColIdx = headerCols.length > 1 ? headerCols.length - 1 : 1;
+            if (dataIdx === -1) dataIdx = 0;
+            if (campIdx === -1) campIdx = 1;
+            if (spamIdx === -1) spamIdx = 2;
 
             const dataLines = lines.slice(headerIdx + 1);
-            const currentProjId = DADOS.activeProjectId;
-
-            for (let data in LOGS_PLANILHA) {
-                LOGS_PLANILHA[data] = LOGS_PLANILHA[data].filter(c => c.projId !== currentProjId);
-                if (LOGS_PLANILHA[data].length === 0) delete LOGS_PLANILHA[data];
-            }
-
-            const novosLogs = {}; 
-            let registrosContabilizados = 0;
+            const novosLogs = {};
+            let registros = 0;
 
             dataLines.forEach(line => {
-                const cols = dividirLinhaCSV(line, separador);
-                if (cols.length <= Math.max(dataColIdx, spamColIdx)) return;
+                const cols = line.split(separador).map(c => c.trim().replace(/^"|"$/g, ''));
+                if (cols.length <= Math.max(dataIdx, spamIdx)) return;
 
-                const rawDate = cols[dataColIdx]; 
-                const rawSpam = cols[spamColIdx];
-                
-                let rawCampaign = "";
-                if (campanhaColIdx !== -1 && cols[campanhaColIdx]) {
-                    rawCampaign = cols[campanhaColIdx];
-                } else {
-                    rawCampaign = `Broadcast Lote - Mapeado (${rawDate.trim()})`;
-                }
-                
+                const rawDate = cols[dataIdx];
+                const rawCampaign = cols[campIdx] || `Lote Mapeado (${rawDate})`;
+                const rawSpam = cols[spamIdx];
+
                 const dateFormatted = limparEFormatarData(rawDate);
-                if (!dateFormatted) return;
+                if (!dateFormatted || !rawSpam) return;
 
-                if (!rawSpam) return;
                 let spamVal = parseFloat(rawSpam.replace("%", "").replace(",", "."));
                 if (isNaN(spamVal)) return;
-
                 if (spamVal > 0 && spamVal < 0.05 && !rawSpam.includes("%")) spamVal = spamVal * 100;
 
+                const projId = extractProjectId(rawCampaign) || "404";
+
                 if (!novosLogs[dateFormatted]) novosLogs[dateFormatted] = [];
-                novosLogs[dateFormatted].push({ id: rawCampaign, spam: spamVal, projId: currentProjId });
-                registrosContabilizados++;
+                novosLogs[dateFormatted].push({ id: rawCampaign, spam: spamVal, projId: projId });
+                registros++;
             });
 
-            for (let data in novosLogs) {
-                if (!LOGS_PLANILHA[data]) LOGS_PLANILHA[data] = [];
-                LOGS_PLANILHA[data] = LOGS_PLANILHA[data].concat(novosLogs[data]);
+            if (registros > 0) {
+                LOGS_PLANILHA = novosLogs;
+                reconstruirProjetosEAbas();
+                return true;
             }
-
-            reconstruirProjetosEAbas();
-            return registrosContabilizados > 0;
+            return false;
         }
 
         function renderHubTopInitial() {
@@ -405,20 +351,12 @@
             
             Object.keys(PROJETOS_METADATA).forEach(id => {
                 const name = PROJETOS_METADATA[id];
-                const config = DADOS.projetosConfig[id] || { status: "bom", mediaSpam: null };
+                const config = DADOS.projetosConfig[id] || { status: "bom", mediaSpam: 0 };
                 const isActive = id === DADOS.activeProjectId ? "active-main" : "";
                 
-                let indicatorColor = "#CBD5E1"; 
-                let spamText = "Clique para carregar";
-                
-                if (config.mediaSpam !== null) {
-                    spamText = `Média Spam: <strong>${config.mediaSpam.toFixed(2)}%</strong>`;
-                    if (config.status === "bom") indicatorColor = "var(--mint)";
-                    if (config.status === "medio") indicatorColor = "var(--alert-yellow)";
-                    if (config.status === "ruim") indicatorColor = "var(--alert-red)";
-                } else if (id === DADOS.activeProjectId) {
-                    spamText = "Buscando dados...";
-                }
+                let indicatorColor = "var(--mint)";
+                if (config.status === "medio") indicatorColor = "var(--alert-yellow)";
+                if (config.status === "ruim") indicatorColor = "var(--alert-red)";
 
                 const card = document.createElement("div");
                 card.className = `hub-card ${isActive}`;
@@ -428,7 +366,7 @@
                     <div class="hub-indicator" style="background-color: ${indicatorColor};"></div>
                     <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;">ID: ${id}</div>
                     <div style="font-weight: 700; font-size: 14px; margin: 4px 0;">${name.split(" / ").pop()}</div>
-                    <div style="font-size: 12px; color: var(--text-dark);">${spamText}</div>
+                    <div style="font-size: 12px; color: var(--text-dark);">Média: <strong>${config.mediaSpam.toFixed(2)}%</strong></div>
                 `;
                 container.appendChild(card);
             });
@@ -436,94 +374,71 @@
 
         function reconstruirProjetosEAbas() {
             const detectados = {};
+            Object.keys(PROJETOS_METADATA).forEach(id => detectados[id] = { totalSpam: 0, count: 0 });
+
             for (let data in LOGS_PLANILHA) {
                 LOGS_PLANILHA[data].forEach(c => {
-                    const id = c.projId;
-                    if (id) {
-                        if (!detectados[id]) detectados[id] = { totalSpam: 0, count: 0 };
-                        detectados[id].totalSpam += c.spam; detectados[id].count++;
+                    if (detectados[c.projId]) {
+                        detectados[c.projId].totalSpam += c.spam;
+                        detectados[c.projId].count++;
                     }
                 });
             }
 
             DADOS.projetosConfig = {};
             Object.keys(PROJETOS_METADATA).forEach(id => {
-                if (detectados[id]) {
-                    const avg = detectados[id].totalSpam / detectados[id].count;
-                    DADOS.projetosConfig[id] = {
-                        nome: PROJETOS_METADATA[id],
-                        status: avg >= 0.30 ? "ruim" : (avg >= 0.10 ? "medio" : "bom"),
-                        mediaSpam: parseFloat(avg.toFixed(3))
-                    };
-                } else {
-                    DADOS.projetosConfig[id] = { nome: PROJETOS_METADATA[id], status: "bom", mediaSpam: null };
-                }
+                const d = detectados[id];
+                const avg = d.count > 0 ? d.totalSpam / d.count : 0;
+                DADOS.projetosConfig[id] = {
+                    nome: PROJETOS_METADATA[id],
+                    status: avg >= 0.30 ? "ruim" : (avg >= 0.10 ? "medio" : "bom"),
+                    mediaSpam: parseFloat(avg.toFixed(3))
+                };
             });
 
-            buildCalendarGrids(); 
-            renderHubTopInitial(); 
-            selectPreset(DADOS.activePreset);
+            buildCalendarGrids();
+            renderHubTopInitial();
+            renderDashboardCompleto();
         }
 
         async function sincronizarGoogleSheets() {
             const btn = document.getElementById("btn-sync-sheets");
-            const msgWrapper = document.getElementById("wrapper-status-msg");
-            btn.disabled = true; btn.innerText = "⏳ Sincronizando...";
-            if (msgWrapper) msgWrapper.innerHTML = ""; 
+            btn.disabled = true; btn.innerText = "⏳ Atualizando Base...";
 
-            const currentProjId = DADOS.activeProjectId;
-            const targetGid = PROJETOS_GIDS[currentProjId];
-
-            if (!targetGid || targetGid.includes("COLOQUE")) {
-                showToast(`Insira o número de GID do Projeto ${currentProjId} no código JavaScript.`, "error");
-                btn.disabled = false; btn.innerText = "🔄 Sincronizar Sheets";
-                reconstruirProjetosEAbas();
-                return;
-            }
-            
             try {
-                // ENDPOINT DE EXPORTAÇÃO CORRIGIDO: Vincula de forma inteligente o ID e o GID da aba ativa
-                const targetUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${targetGid}&_nocache=${Date.now()}`;
-                
-                const response = await fetch(targetUrl);
+                const response = await fetch(MASTER_RAW_CSV_URL);
                 if (!response.ok) throw new Error();
                 const csvText = await response.text();
                 
-                // BARREIRA DE SEGURANÇA: Avisa se o Sheets não foi compartilhado de forma correta
-                if (csvText.includes("<html") || csvText.includes("<!DOCTYPE")) {
-                    showToast("Planilha com acesso restrito. Altere a configuração de Compartilhar para 'Qualquer pessoa com o link pode ler'.", "error");
-                    btn.disabled = false; btn.innerText = "🔄 Sincronizar Sheets";
-                    reconstruirProjetosEAbas();
-                    return;
-                }
-                
                 if (processarTextoCSV(csvText)) {
-                    showToast(`Aba do Projeto ${currentProjId} sincronizada com sucesso!`, "success");
+                    showToast("Dashboard atualizado com sucesso!", "success");
                     document.getElementById("banner-alerta-local").style.display = "none";
                 } else {
-                    showToast("Formato inválido ou aba sem dados.", "error");
+                    showToast("Formato de cabeçalhos inválido na base bruta.", "error");
                 }
             } catch (error) {
                 document.getElementById("banner-alerta-local").style.display = "block";
-                showToast("Bloqueio de conexão local (CORS). Use o carregamento manual abaixo para testar local.", "error");
-                reconstruirProjetosEAbas();
+                showToast("Erro de CORS local. Use o carregamento manual para testar local.", "error");
             } finally {
-                btn.disabled = false; btn.innerText = "🔄 Sincronizar Sheets";
+                btn.disabled = false; btn.innerText = "🔄 Sincronizar Base Bruta";
             }
+        }
+
+        function changeProject(id) { 
+            DADOS.activeProjectId = id; 
+            localStorage.setItem("lastProjectViewed", id);
+            document.querySelectorAll(".hub-card").forEach(c => c.classList.remove("active-main"));
+            const card = document.querySelector(`[data-id="${id}"]`);
+            if (card) card.classList.add("active-main");
+            document.getElementById("painel-auditoria-avancada").style.display = "none";
+            renderDashboardCompleto(); 
         }
 
         function processarBypassManual(event) {
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = function(e) {
-                if (processarTextoCSV(e.target.result)) {
-                    showToast("Planilha manual processada com sucesso!", "success");
-                    document.getElementById("banner-alerta-local").style.display = "none";
-                } else {
-                    showToast("Arquivo inválido.", "error");
-                }
-            };
+            reader.onload = function(e) { processarTextoCSV(e.target.result); };
             reader.readAsText(file);
         }
 
@@ -551,101 +466,51 @@
         }
 
         function toggleDatePickerPanel(event) { event.stopPropagation(); const p = document.getElementById("modal-datepicker-interface"); p.style.display = p.style.display === "grid" ? "none" : "grid"; }
-        function selectPreset(preset) { DADOS.activePreset = preset; selectPresetDisplay(); }
-        function selectPresetDisplay() {
-            updateActiveDateRange();
-            document.getElementById("txt-faixa-ativa-label").innerText = DADOS.activePreset === "7d" ? "Últimos 7 dias" : `Período Ativo (${DADOS.activePreset})`;
-            refreshCalendarUI(); renderDashboardCompleto(); document.getElementById("modal-datepicker-interface").style.display = "none";
-        }
-        function selectSpecificDay(day, month, year, element) {
+        function selectPreset(preset) { DADOS.activePreset = preset; updateActiveDateRange(); document.getElementById("txt-faixa-ativa-label").innerText = preset === "7d" ? "Últimos 7 dias" : `Período Ativo (${preset})`; renderDashboardCompleto(); document.getElementById("modal-datepicker-interface").style.display = "none"; }
+        
+        function selectSpecificDay(day, month, year) {
             const clickedDate = new Date(year, parseInt(month) - 1, day);
             if (!DADOS.startDate || (DADOS.startDate && DADOS.endDate)) { DADOS.startDate = clickedDate; DADOS.endDate = null; DADOS.activePreset = "custom"; }
             else { if (clickedDate >= DADOS.startDate) { DADOS.endDate = clickedDate; document.getElementById("modal-datepicker-interface").style.display = "none"; } else DADOS.startDate = clickedDate; }
-            refreshCalendarUI(); renderDashboardCompleto();
+            renderDashboardCompleto();
         }
+
         function formatDateString(date) { return String(date.getDate()).padStart(2, '0') + '/' + String(date.getMonth() + 1).padStart(2, '0'); }
-        function refreshCalendarUI() {
-            document.querySelectorAll(".day-cell:not(.adj-month)").forEach(cell => {
-                const day = parseInt(cell.getAttribute("data-day")); const month = parseInt(cell.getAttribute("data-month")); const cellDate = new Date(2026, month - 1, day);
-                cell.classList.remove("selected-day");
-                if (DADOS.startDate && !DADOS.endDate && cellDate.getTime() === DADOS.startDate.getTime()) cell.classList.add("selected-day");
-                else if (DADOS.startDate && DADOS.endDate && cellDate >= DADOS.startDate && cellDate <= DADOS.endDate) cell.classList.add("selected-day");
-            });
-        }
 
         function buildCalendarGrids() {
-            let dates = Object.keys(LOGS_PLANILHA); let months = [];
-            if (dates.length === 0) months = [{ month: 5, year: 2026 }];
-            else {
-                let uniqueMonths = {}; dates.forEach(dStr => { let parts = dStr.split("/"); uniqueMonths[`${parseInt(parts[1]) - 1}-2026`] = { month: parseInt(parts[1]) - 1, year: 2026 }; });
-                months = Object.values(uniqueMonths).sort((a,b) => a.month - b.month);
-            }
             const calendarArea = document.querySelector(".panel-calendar-area"); calendarArea.innerHTML = "";
-            const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-            
-            months.forEach(mObj => {
-                let monthDiv = document.createElement("div"); monthDiv.className = "month-view";
-                let titleDiv = document.createElement("div"); titleDiv.className = "month-title"; titleDiv.innerText = `${monthNames[mObj.month]} ${mObj.year}`; monthDiv.appendChild(titleDiv);
-                let weekGrid = document.createElement("div"); weekGrid.className = "week-grid";
-                ["dom", "seg", "ter", "qua", "qui", "sex", "sab"].forEach(wd => { let wdDiv = document.createElement("div"); wdDiv.className = "week-day"; wdDiv.innerText = wd; weekGrid.appendChild(wdDiv); });
-                monthDiv.appendChild(weekGrid);
-                let daysGrid = document.createElement("div"); daysGrid.className = "days-grid";
-                let firstDay = new Date(mObj.year, mObj.month, 1).getDay(); let daysInMonth = new Date(mObj.year, mObj.month + 1, 0).getDate();
-                for (let i = 0; i < firstDay; i++) { let dayCell = document.createElement("div"); dayCell.className = "day-cell adj-month"; dayCell.innerText = ""; daysGrid.appendChild(dayCell); }
-                for (let d = 1; d <= daysInMonth; d++) {
-                    let dayCell = document.createElement("div"); dayCell.className = "day-cell"; dayCell.setAttribute("data-day", d); dayCell.setAttribute("data-month", mObj.month + 1); dayCell.innerText = d;
-                    dayCell.onclick = function() { selectSpecificDay(d, String(mObj.month + 1).padStart(2,'0'), mObj.year, dayCell); }; daysGrid.appendChild(dayCell);
-                }
-                monthDiv.appendChild(daysGrid); calendarArea.appendChild(monthDiv);
-            });
-            refreshCalendarUI();
+            let mObj = { month: 5, year: 2026 };
+            let monthDiv = document.createElement("div"); monthDiv.className = "month-view";
+            let titleDiv = document.createElement("div"); titleDiv.className = "month-title"; titleDiv.innerText = `Junho ${mObj.year}`; monthDiv.appendChild(titleDiv);
+            let weekGrid = document.createElement("div"); weekGrid.className = "week-grid";
+            ["dom", "seg", "ter", "qua", "qui", "sex", "sab"].forEach(wd => { let wdDiv = document.createElement("div"); wdDiv.className = "week-day"; wdDiv.innerText = wd; weekGrid.appendChild(wdDiv); });
+            monthDiv.appendChild(weekGrid);
+            let daysGrid = document.createElement("div"); daysGrid.className = "days-grid";
+            let firstDay = new Date(mObj.year, mObj.month, 1).getDay(); let daysInMonth = new Date(mObj.year, mObj.month + 1, 0).getDate();
+            for (let i = 0; i < firstDay; i++) { let dayCell = document.createElement("div"); dayCell.className = "day-cell adj-month"; daysGrid.appendChild(dayCell); }
+            for (let d = 1; d <= daysInMonth; d++) {
+                let dayCell = document.createElement("div"); dayCell.className = "day-cell"; dayCell.innerText = d;
+                dayCell.onclick = function() { selectSpecificDay(d, mObj.month + 1, mObj.year); }; daysGrid.appendChild(dayCell);
+            }
+            monthDiv.appendChild(daysGrid); calendarArea.appendChild(monthDiv);
         }
 
-        function changeProject(id) { 
-            DADOS.activeProjectId = id; 
-            localStorage.setItem("lastProjectViewed", id); 
-
-            document.querySelectorAll(".hub-card").forEach(c => c.classList.remove("active-main")); 
-            const card = document.querySelector(`[data-id="${id}"]`); 
-            if (card) card.classList.add("active-main"); 
-            
-            document.getElementById("txt-header-titulo").innerText = PROJETOS_METADATA[id] || `Projeto ${id}`; 
-            document.getElementById("painel-auditoria-avancada").style.display = "none"; 
-            DADOS.activeFilter = "todos"; 
-            
-            sincronizarGoogleSheets(); 
-        }
-
-        function alterarFiltroCampanha(filtro) { DADOS.activeFilter = filtro; document.querySelectorAll(".btn-filter").forEach(btn => btn.classList.remove("active-filter")); let targetId = filtro === "aprovado" ? "btn-filt-aprovado" : (filtro === "otimizar" ? "btn-filt-otimizar" : (filtro === "remover" ? "btn-filt-remover" : "btn-filt-todos")); document.getElementById(targetId).classList.add("active-filter"); renderDashboardCompleto(false); }
+        function alterarFiltroCampanha(filtro) { DADOS.activeFilter = filtro; document.querySelectorAll(".btn-filter").forEach(btn => btn.classList.remove("active-filter")); document.getElementById(`btn-filt-${filtro}`).classList.add("active-filter"); renderDashboardCompleto(false); }
 
         function renderDashboardCompleto(atualizarSpamDia = true) {
-            const tPreset = DADOS.activePreset; const projId = DADOS.activeProjectId; let rawList = [];
-            if (tPreset === "custom" && DADOS.startDate) {
-                let start = new Date(DADOS.startDate.getFullYear(), DADOS.startDate.getMonth(), DADOS.startDate.getDate());
-                let end = DADOS.endDate ? new Date(DADOS.endDate.getFullYear(), DADOS.endDate.getMonth(), DADOS.endDate.getDate()) : start;
-                Object.keys(LOGS_PLANILHA).forEach(k => {
-                    let parts = k.split("/"); let cDate = new Date(2026, parseInt(parts[1]) - 1, parseInt(parts[0]));
-                    if (cDate >= start && cDate <= end) LOGS_PLANILHA[k].forEach(item => rawList.push({ data: k, id: item.id, spam: item.spam, projId: item.projId }));
-                });
-            } else {
-                updateActiveDateRange();
-                if (DADOS.startDate && DADOS.endDate) {
-                    let current = new Date(DADOS.startDate);
-                    while (current <= DADOS.endDate) {
-                        let k = formatDateString(current);
-                        if (LOGS_PLANILHA[k]) LOGS_PLANILHA[k].forEach(item => rawList.push({ data: k, id: item.id, spam: item.spam, projId: item.projId }));
-                        current.setDate(current.getDate() + 1);
-                    }
+            const projId = DADOS.activeProjectId; let rawList = [];
+            updateActiveDateRange();
+
+            if (DADOS.startDate && DADOS.endDate) {
+                let current = new Date(DADOS.startDate);
+                while (current <= DADOS.endDate) {
+                    let k = formatDateString(current);
+                    if (LOGS_PLANILHA[k]) LOGS_PLANILHA[k].forEach(item => rawList.push({ data: k, id: item.id, spam: item.spam, projId: item.projId }));
+                    current.setDate(current.getDate() + 1);
                 }
             }
 
             let campanhasProjetos = rawList.filter(c => c.projId === projId);
-            
-            campanhasProjetos.sort((a,b) => {
-                let ptsA = a.data.split("/"); let ptsB = b.data.split("/");
-                return new Date(2026, parseInt(ptsA[1])-1, parseInt(ptsA[0])) - new Date(2026, parseInt(ptsB[1])-1, parseInt(ptsB[0]));
-            });
-
             document.getElementById("cnt-todos").innerText = campanhasProjetos.length;
             document.getElementById("cnt-aprovado").innerText = campanhasProjetos.filter(c => c.spam <= 0.10).length;
             document.getElementById("cnt-otimizar").innerText = campanhasProjetos.filter(c => c.spam > 0.10 && c.spam < 0.30).length;
@@ -658,141 +523,55 @@
 
             const tbody = document.getElementById("tabela-broadcast-dados").querySelector("tbody");
             if(campanhasExibidas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:24px;">Nenhuma campanha ativa para o Projeto ${projId} neste período (Aba vazia).</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:24px;">Nenhum registro para o Projeto ${projId} neste período.</td></tr>`;
             } else {
                 tbody.innerHTML = campanhasExibidas.map(c => {
-                    let statusLabel = c.spam <= 0.10 ? "Aprovado" : (c.spam < 0.30 ? "Otimizar" : "Remover");
+                    let label = c.spam <= 0.10 ? "Aprovado" : (c.spam < 0.30 ? "Otimizar" : "Remover");
                     return `<tr class="row-clicavel" onclick="inspecionarCampanhaRow(this, '${c.id}', '${c.data}', ${c.spam})">
-                        <td style="color: #64748B;">${c.data}</td><td style="color: #028090; font-weight: 500;">${c.id}</td><td>${c.spam.toFixed(2)}%</td><td style="font-weight: 600;">${statusLabel}</td>
+                        <td>${c.data}</td><td>${c.id}</td><td>${c.spam.toFixed(2)}%</td><td>${label}</td>
                     </tr>`;
                 }).join('');
             }
-            if (DADOS.projetosConfig[projId]) renderInsights();
+            renderInsights();
             if (atualizarSpamDia) renderCharts();
         }
 
         function renderInsights() {
-            const projId = DADOS.activeProjectId; const spamMedio = DADOS.projetosConfig[projId]?.mediaSpam || null;
-            document.getElementById("caixa-insights-postmaster").innerHTML = `<div><strong>💡 AUDITORIA DE ENTREGABELIDADE: PROJETO ${projId}</strong><p style="font-size:12px;">Média sanitária atual do Postmaster em: ${spamMedio !== null ? spamMedio.toFixed(3) + '%' : 'Aguardando sincronização de aba...'}.</p></div>`;
+            const projId = DADOS.activeProjectId; const spamMedio = DADOS.projetosConfig[projId]?.mediaSpam || 0;
+            document.getElementById("caixa-insights-postmaster").innerHTML = `<div><strong>💡 AUDITORIA DE ENTREGABELIDADE: PROJETO ${projId}</strong><p style="font-size:12px;">Média sanitária atual em: ${spamMedio.toFixed(3)}%.</p></div>`;
         }
 
         function inspecionarCampanhaRow(element, idCampanha, dataCampanha, spamAtual) {
-            document.querySelectorAll(".row-clicavel").forEach(r => r.classList.remove("row-selected")); 
-            element.classList.add("row-selected");
-            
-            document.getElementById("txt-titulo-inspecao").innerText = `🔍 Diagnóstico Técnico do Lote: ${idCampanha}`;
-            
-            let statusBadge = "";
-            let planoAcao = "";
-            
-            if (spamAtual >= 0.30) {
-                statusBadge = "<span class='badge-status badge-ruim'>🔴 CRÍTICO (REMOVER)</span>";
-                planoAcao = "<strong>MEDIDA DE EMERGÊNCIA:</strong> Pausar imediatamente disparos semelhantes usando este remetente. Taxa acima do limite do Postmaster. Necessário rodar uma higienização rigorosa na lista de leads frios e verificar se o IP caiu em Blacklist antes de reativar.";
-            } else if (spamAtual >= 0.10) {
-                statusBadge = "<span class='badge-status badge-medio'>🟡 ATENÇÃO (OTIMIZAR)</span>";
-                planoAcao = "<strong>AÇÃO CORRETIVA:</strong> Margem de atenção detectada. Reduzir o volume de e-mails enviados por hora (Throttling). Revisar urgentemente a linha de assunto para remover termos comerciais agressivos que acionam filtros de spam mecânicos.";
-            } else {
-                statusBadge = "<span class='badge-status badge-bom'>🟢 EXCELENTE (APROVADO)</span>";
-                planoAcao = "<strong>STATUS NOMINAL:</strong> Performance sanitária exemplar. Reputação do domínio segura. Volume totalmente liberado para escalabilidade de entregas diárias sem restrições técnicas.";
-            }
-            
+            document.querySelectorAll(".row-clicavel").forEach(r => r.classList.remove("row-selected")); element.classList.add("row-selected");
+            document.getElementById("txt-titulo-inspecao").innerText = `🔍 Diagnóstico Técnico: ${idCampanha}`;
+            let badge = spamAtual >= 0.30 ? "🔴 CRÍTICO" : (spamAtual >= 0.10 ? "🟡 ATENÇÃO" : "🟢 EXCELENTE");
             document.getElementById("tabela-inspecao-kpis").innerHTML = `
-                <tr>
-                    <td><strong>ID Identificador Corporativo</strong></td>
-                    <td><code style="color:var(--teal); font-weight:700;">${idCampanha}</code></td>
-                    <td>Lote disparado e catalogado officially no sistema na data de <strong>${dataCampanha}</strong>.</td>
-                </tr>
-                <tr>
-                    <td><strong>Taxa de Reclamação (Spam)</strong></td>
-                    <td style="font-size:14px; font-weight:700; color:var(--navy-dark);">${spamAtual.toFixed(3)}%</td>
-                    <td>Status de Integridade: ${statusBadge}</td>
-                </tr>
-                <tr>
-                    <td><strong>Plano de Ação Estratégico</strong></td>
-                    <td colspan="2" style="background: #F8FAFC; color: var(--text-dark); font-size: 12.5px; padding: 16px; border-left: 4px solid var(--navy-dark);">
-                        ${planoAcao}
-                    </td>
-                </tr>
+                <tr><td><strong>ID Identificador</strong></td><td><code>${idCampanha}</code></td><td>Catalogado em ${dataCampanha}</td></tr>
+                <tr><td><strong>Taxa de Spam</strong></td><td>${spamAtual.toFixed(3)}%</td><td>Status: ${badge}</td></tr>
             `;
-            
             document.getElementById("painel-auditoria-avancada").style.display = "block";
-            document.getElementById("painel-auditoria-avancada").scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
         function renderCharts() {
             const projId = DADOS.activeProjectId;
-            
-            let datasDoProjeto = [];
-            Object.keys(LOGS_PLANILHA).forEach(k => {
-                let temLogDoProjeto = LOGS_PLANILHA[k].some(l => l.projId === projId);
-                if (temLogDoProjeto) datasDoProjeto.push(k);
-            });
-
-            datasDoProjeto.sort((a,b) => { 
-                let ptsA = a.split("/"); let ptsB = b.split("/"); 
-                return new Date(2026, parseInt(ptsA[1])-1, parseInt(ptsA[0])) - new Date(2026, parseInt(ptsB[1])-1, parseInt(ptsB[0])); 
-            });
-
-            let timelineEixoSpam = datasDoProjeto.slice(-15);
-
-            if (timelineEixoSpam.length === 0) {
-                if (activeCharts.gSpamDia) activeCharts.gSpamDia.destroy();
-                return;
-            }
-
-            let valoresEixoSpam = [];
-            timelineEixoSpam.forEach(k => {
-                let logs = LOGS_PLANILHA[k] || []; 
-                let projectLogs = logs.filter(l => l.projId === projId);
-                let sum = 0; 
-                projectLogs.forEach(l => sum += l.spam);
-                valoresEixoSpam.push(parseFloat((sum / projectLogs.length).toFixed(3)));
+            let timeline = Object.keys(LOGS_PLANILHA).sort().slice(-15);
+            let valores = timeline.map(k => {
+                let pLogs = LOGS_PLANILHA[k].filter(l => l.projId === projId);
+                if(pLogs.length === 0) return 0;
+                return parseFloat((pLogs.reduce((acc, l) => acc + l.spam, 0) / pLogs.length).toFixed(3));
             });
 
             if (activeCharts.gSpamDia) activeCharts.gSpamDia.destroy();
-            
             try {
                 activeCharts.gSpamDia = new Chart(document.getElementById('gSpamDia'), {
                     type: 'line',
-                    data: { 
-                        labels: timelineEixoSpam, 
-                        datasets: [
-                            { 
-                                label: 'Spam % Médio Diário', 
-                                data: valoresEixoSpam, 
-                                borderColor: '#028090', 
-                                backgroundColor: 'rgba(2, 128, 144, 0.08)',
-                                pointRadius: 5, 
-                                tension: 0.2,
-                                fill: true
-                            }, 
-                            { 
-                                label: 'Teto Crítico (0.30%)', 
-                                data: Array(timelineEixoSpam.length).fill(0.30), 
-                                borderColor: '#E63946', 
-                                borderDash: [5, 5], 
-                                pointRadius: 0,
-                                fill: false
-                            }
-                        ] 
-                    },
-                    options: { 
-                        responsive: true, 
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                suggestedMax: 0.40,
-                                ticks: { callback: function(value) { return value.toFixed(2) + '%'; } }
-                            }
-                        }
-                    }
+                    data: { labels: timeline, datasets: [{ label: 'Spam %', data: valores, borderColor: '#028090', tension: 0.2, fill: true }] },
+                    options: { responsive: true, maintainAspectRatio: false }
                 });
             } catch(e) {}
         }
 
         document.addEventListener("DOMContentLoaded", function() { 
-            // Recupera a memória de navegação ou inicia direto na sua aba ativa (2513)
             DADOS.activeProjectId = localStorage.getItem("lastProjectViewed") || "2513";
             sincronizarGoogleSheets(); 
         });
