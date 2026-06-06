@@ -412,11 +412,9 @@
                 };
             }
 
-            // MEMÓRIA ATIVA: Valida se o projeto salvo ainda existe nos dados novos
             const idsDisponiveis = Object.keys(DADOS.projetosConfig);
             if (idsDisponiveis.length > 0 && !idsDisponiveis.includes(DADOS.activeProjectId)) {
                 DADOS.activeProjectId = idsDisponiveis[0];
-                localStorage.setItem("lastProjectViewed", idsDisponiveis[0]);
             }
             
             document.getElementById("txt-header-titulo").innerText = DADOS.projetosConfig[DADOS.activeProjectId]?.nome || `Projeto ${DADOS.activeProjectId}`;
@@ -538,21 +536,7 @@
             refreshCalendarUI();
         }
 
-        // MEMÓRIA ATIVA: Grava a escolha atual no navegador
-        function changeProject(id) { 
-            DADOS.activeProjectId = id; 
-            localStorage.setItem("lastProjectViewed", id); 
-
-            document.querySelectorAll(".hub-card").forEach(c => c.classList.remove("active-main")); 
-            const card = document.querySelector(`[data-id="${id}"]`); 
-            if (card) card.classList.add("active-main"); 
-            
-            document.getElementById("txt-header-titulo").innerText = DADOS.projetosConfig[id]?.nome || `Projeto ${id}`; 
-            document.getElementById("painel-auditoria-avancada").style.display = "none"; 
-            DADOS.activeFilter = "todos"; 
-            renderDashboardCompleto(); 
-        }
-
+        function changeProject(id) { DADOS.activeProjectId = id; document.querySelectorAll(".hub-card").forEach(c => c.classList.remove("active-main")); const card = document.querySelector(`[data-id="${id}"]`); if (card) card.classList.add("active-main"); document.getElementById("txt-header-titulo").innerText = DADOS.projetosConfig[id]?.nome || `Projeto ${id}`; document.getElementById("painel-auditoria-avancada").style.display = "none"; DADOS.activeFilter = "todos"; renderDashboardCompleto(); }
         function alterarFiltroCampanha(filtro) { DADOS.activeFilter = filtro; document.querySelectorAll(".btn-filter").forEach(btn => btn.classList.remove("active-filter")); let targetId = filtro === "aprovado" ? "btn-filt-aprovado" : (filtro === "otimizar" ? "btn-filt-otimizar" : (filtro === "remover" ? "btn-filt-remover" : "btn-filt-todos")); document.getElementById(targetId).classList.add("active-filter"); renderDashboardCompleto(false); }
 
         function renderDashboardCompleto(atualizarSpamDia = true) {
@@ -613,6 +597,7 @@
             document.getElementById("caixa-insights-postmaster").innerHTML = `<div><strong>💡 AUDITORIA DE ENTREGABELIDADE: PROJETO ${projId}</strong><p style="font-size:12px;">Média sanitária atual do Postmaster em: ${spamMedio.toFixed(3)}%.</p></div>`;
         }
 
+        // RECONSTRUÇÃO DA FUNÇÃO DE INSPEÇÃO: GERA RELATÓRIOS E DIRECIONAMENTOS DINÂMICOS REALÍSTICOS
         function inspecionarCampanhaRow(element, idCampanha, dataCampanha, spamAtual) {
             document.querySelectorAll(".row-clicavel").forEach(r => r.classList.remove("row-selected")); 
             element.classList.add("row-selected");
@@ -653,6 +638,8 @@
             `;
             
             document.getElementById("painel-auditoria-avancada").style.display = "block";
+            
+            // Auto-rolagem sutil para o painel de inspeção ser visto imediatamente
             document.getElementById("painel-auditoria-avancada").scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
@@ -728,11 +715,7 @@
             } catch(e) {}
         }
 
-        // MEMÓRIA ATIVA: Inicializa o painel resgatando a escolha anterior
-        document.addEventListener("DOMContentLoaded", function() { 
-            DADOS.activeProjectId = localStorage.getItem("lastProjectViewed") || "404";
-            sincronizarGoogleSheets(); 
-        });
+        document.addEventListener("DOMContentLoaded", function() { sincronizarGoogleSheets(); });
     </script>
 </body>
 </html>
