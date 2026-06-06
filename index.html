@@ -147,10 +147,10 @@
                 </div>
             </div>
 
-            <!-- ÁREA DO GRÁFICO & TABELA (Duas Colunas) -->
+            <!-- ÁREA DE GRÁFICOS PRINCIPAIS (Duas Colunas) -->
             <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
                 
-                <!-- COLUNA DA ESQUERDA: GRÁFICO HISTÓRICO -->
+                <!-- COLUNA DA ESQUERDA: GRÁFICO HISTÓRICO DE LINHA -->
                 <section class="xl:col-span-6 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-4">
                     <div class="flex items-center justify-between">
                         <h2 class="text-sm font-extrabold text-[#0b2240] tracking-wider uppercase flex items-center gap-2">
@@ -212,6 +212,33 @@
                     </div>
                 </section>
             </div>
+
+            <!-- ================= NOVO GRID DE GRÁFICOS COMPLEMENTARES (SOLICITADO) ================= -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
+                
+                <!-- GRÁFICO DE BARRAS POR DIA -->
+                <section class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-4">
+                    <h2 class="text-sm font-extrabold text-[#0b2240] tracking-wider uppercase flex items-center gap-2">
+                        <span class="w-1.5 h-4 bg-blue-500 rounded-full"></span>
+                        📊 Volume de Envios por Dia
+                    </h2>
+                    <div class="relative w-full h-[320px]">
+                        <canvas id="dailyVolumeChart"></canvas>
+                    </div>
+                </section>
+
+                <!-- GRÁFICO DE BARRAS HORIZONTAIS POR CAMPANHA / HORÁRIO -->
+                <section class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-4">
+                    <h2 class="text-sm font-extrabold text-[#0b2240] tracking-wider uppercase flex items-center gap-2">
+                        <span class="w-1.5 h-4 bg-amber-500 rounded-full"></span>
+                        📈 Taxa Média de Spam por Campanha (Horário)
+                    </h2>
+                    <div class="relative w-full h-[320px]">
+                        <canvas id="campaignSpamChart"></canvas>
+                    </div>
+                </section>
+            </div>
+
         </div>
 
     </div>
@@ -357,6 +384,8 @@
         ];
 
         let activeChart = null;
+        let dailyVolumeChartInstance = null;
+        let campaignSpamChartInstance = null;
         let selectedProject = null;
 
         // Renderização Inicial
@@ -446,8 +475,9 @@
             // Preencher Tabela
             renderTableData(proj.detalhesTabela);
 
-            // Gerar Gráfico ChartJS
+            // Gerar Gráficos ChartJS
             buildHistoricalChart(proj);
+            buildComplementaryCharts(proj);
 
             showToast(`Dashboard do ${proj.title} carregado`);
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -622,6 +652,144 @@
             });
         }
 
+        // Constrói os novos gráficos adicionais: Por Dia e Por Campanha
+        function buildComplementaryCharts(proj) {
+            // 1. GRÁFICO POR DIA (Volume de Envios)
+            const ctxDaily = document.getElementById('dailyVolumeChart').getContext('2d');
+            if (dailyVolumeChartInstance) {
+                dailyVolumeChartInstance.destroy();
+            }
+
+            // Inverter para ordem cronológica (esquerda -> direita)
+            const sortedHistory = [...proj.detalhesTabela].reverse();
+            const dailyLabels = sortedHistory.map(h => h.data);
+            const dailyData = sortedHistory.map(h => parseInt(h.envios.replace(/\./g, '')) || 0);
+
+            dailyVolumeChartInstance = new Chart(ctxDaily, {
+                type: 'bar',
+                data: {
+                    labels: dailyLabels,
+                    datasets: [{
+                        label: 'Total de Envios',
+                        data: dailyData,
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 8,
+                        maxBarThickness: 45
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0b2240',
+                            callbacks: {
+                                label: function(context) {
+                                    return ' Envios: ' + context.raw.toLocaleString('pt-BR');
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: '#f1f5f9' },
+                            ticks: {
+                                color: '#94a3b8',
+                                font: { size: 10, weight: '600' },
+                                callback: function(val) {
+                                    return val >= 1000 ? (val / 1000) + 'k' : val;
+                                }
+                            }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8', font: { size: 10, weight: '600' } }
+                        }
+                    }
+                }
+            });
+
+            // 2. GRÁFICO POR CAMPANHA / HORÁRIO (Taxa média de Spam)
+            const ctxCampaign = document.getElementById('campaignSpamChart').getContext('2d');
+            if (campaignSpamChartInstance) {
+                campaignSpamChartInstance.destroy();
+            }
+
+            const campaignKeys = ['h1', 'h9', 'h12', 'h14', 'h15', 'h16', 'h18', 'h19', 'h21'];
+            const campaignLabels = ['Campanha H1', 'Campanha H9', 'Campanha H12', 'Campanha H14', 'Campanha H15', 'Campanha H16', 'Campanha H18', 'Campanha H19', 'Campanha H21'];
+
+            // Calcular taxa média real de spam de cada horário (pulando vazios '—')
+            const campaignData = campaignKeys.map(key => {
+                let sum = 0;
+                let count = 0;
+                proj.detalhesTabela.forEach(row => {
+                    const cellVal = row[key];
+                    if (cellVal && cellVal !== '—') {
+                        const numericVal = parseFloat(cellVal.replace('%', ''));
+                        if (!isNaN(numericVal)) {
+                            sum += numericVal;
+                            count++;
+                        }
+                    }
+                });
+                return count > 0 ? parseFloat((sum / count).toFixed(3)) : 0;
+            });
+
+            campaignSpamChartInstance = new Chart(ctxCampaign, {
+                type: 'bar',
+                data: {
+                    labels: campaignLabels,
+                    datasets: [{
+                        label: 'Taxa Média de Spam',
+                        data: campaignData,
+                        backgroundColor: campaignData.map(val => {
+                            if (val < 0.10) return '#00b489'; // Verde Excelente
+                            if (val < 0.30) return '#f3a83b'; // Laranja Saudável
+                            return '#f43f5e'; // Vermelho Crítico
+                        }),
+                        borderRadius: 6,
+                        maxBarThickness: 16
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', // Define o gráfico como horizontal!
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0b2240',
+                            callbacks: {
+                                label: function(context) {
+                                    return ' Média: ' + context.raw.toFixed(2) + '%';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            min: 0,
+                            max: 0.60,
+                            grid: { color: '#f1f5f9' },
+                            ticks: {
+                                stepSize: 0.15,
+                                color: '#94a3b8',
+                                font: { size: 10, weight: '600' },
+                                callback: function(val) {
+                                    return val.toFixed(2) + '%';
+                                }
+                            }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8', font: { size: 10, weight: '600' } }
+                        }
+                    }
+                }
+            });
+        }
+
         // Filtro interativo na tabela "HISTÓRICO DIÁRIO"
         function filterTable() {
             const input = document.getElementById("tableSearch");
@@ -662,13 +830,21 @@
                 document.getElementById('metricEnvios').innerText = Math.round(baseEnvios * factor).toLocaleString('pt-BR');
                 document.getElementById('metricDias').innerText = period === '7d' ? '7' : period === '30d' ? '30' : period === '90d' ? '90' : '150';
                 
-                // Re-gerar dados simulados do gráfico
+                // Re-gerar dados simulados do gráfico de histórico
                 activeChart.data.datasets.forEach(dataset => {
                     if (dataset.label !== 'Teto 0.3%') {
                         dataset.data = dataset.data.map(val => Math.min(0.55, Math.max(0.01, val * (0.8 + Math.random() * 0.4))));
                     }
                 });
                 activeChart.update();
+
+                // Atualizar também o gráfico por Dia e Campanha de forma coerente
+                dailyVolumeChartInstance.data.datasets[0].data = dailyVolumeChartInstance.data.datasets[0].data.map(val => Math.round(val * factor * (0.9 + Math.random() * 0.2)));
+                dailyVolumeChartInstance.update();
+
+                campaignSpamChartInstance.data.datasets[0].data = campaignSpamChartInstance.data.datasets[0].data.map(val => Math.min(0.55, Math.max(0.01, val * (0.8 + Math.random() * 0.4))));
+                campaignSpamChartInstance.update();
+
                 showToast(`Filtrado por ${period === 'all' ? 'todo o período' : period}`);
             }
         }
@@ -724,13 +900,16 @@
                     const horaFormatada = agora.toLocaleDateString('pt-BR') + ", " + agora.toLocaleTimeString('pt-BR');
                     document.getElementById('dashUpdateTime').innerText = horaFormatada;
 
-                    // Animar gráfico
+                    // Animar gráfico principal
                     activeChart.data.datasets.forEach(dataset => {
                         if (dataset.label !== 'Teto 0.3%') {
                             dataset.data = dataset.data.map(val => Math.min(0.55, Math.max(0.01, val * (0.9 + Math.random() * 0.2))));
                         }
                     });
                     activeChart.update();
+
+                    // Animar e recarregar os novos gráficos dinamicamente
+                    buildComplementaryCharts(selectedProject);
                 }
                 showToast("Métricas atualizadas com sucesso!");
             }, 1200);
