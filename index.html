@@ -233,7 +233,7 @@
     <div id="custom-toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 8px;"></div>
 
     <script>
-        // SEU LINK DO PRINT TOTALMENTE EMBUTIDO SEM ERROS
+        // LINK INTEGRADO DIRETAMENTE DA SUA IMAGEM DO GOOGLE SHEETS
         const MASTER_RAW_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQzr0NHB8FBBK9r1symUNT2RO21ld25j6h7thMdOPFzuxqjJY3oncSAQjqEVgp1INZL_uusUlwo1p8N/pub?gid=37238948&single=true&output=csv";
 
         const activeCharts = { gSpamDia: null };
@@ -475,7 +475,6 @@
             renderDashboardCompleto();
         }
 
-        // CONVERSOR UNIVERSAL DE STRING DE DATA PARA COMPARAÇÃO
         function formatDateString(date) { return String(date.getDate()).padStart(2, '0') + '/' + String(date.getMonth() + 1).padStart(2, '0'); }
 
         function buildCalendarGrids() {
@@ -543,7 +542,7 @@
         }
 
         function inspecionarCampanhaRow(element, idCampanha, dataCampanha, spamAtual) {
-            document.querySelectorAll(".row-clicavel").forEach(r => r.remove("row-selected")); element.classList.add("row-selected");
+            document.querySelectorAll(".row-clicavel").forEach(r => r.classList.remove("row-selected")); element.classList.add("row-selected");
             document.getElementById("txt-titulo-inspecao").innerText = `🔍 Diagnóstico Técnico: ${idCampanha}`;
             let badge = spamAtual >= 0.30 ? "🔴 CRÍTICO" : (spamAtual >= 0.10 ? "🟡 ATENÇÃO" : "🟢 EXCELENTE");
             document.getElementById("tabela-inspecao-kpis").innerHTML = `
