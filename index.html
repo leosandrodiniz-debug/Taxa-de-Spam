@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Executive War Room | Projeto 404</title>
     
+    <!-- Bibliotecas -->
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -26,19 +28,21 @@
             display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;
         }
         .header-title h1 { font-size: 20px; font-weight: 800; }
+        .btn-top { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px 16px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; }
+
         .filter-bar {
             background: white; padding: 12px; border-radius: 12px; border: 1px solid var(--border);
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap: 15px;
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap: 15px; flex-wrap: wrap;
         }
         .f-btn { 
             background: #f8fafc; border: 1px solid var(--border); padding: 8px 14px; 
             border-radius: 6px; font-size: 11px; color: var(--muted); cursor: pointer; font-weight: 600;
         }
         .f-btn.active { background: #EEF2FF; color: #4F46E5; border-color: #C7D2FE; }
-        #calendar-input { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px; width: 220px; cursor: pointer; }
+        #date-range { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px; width: 230px; cursor: pointer; background: white; }
 
         .grid-units { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
-        .unit-card { background: white; border-radius: 12px; padding: 22px; border: 1px solid var(--border); cursor: pointer; position: relative; }
+        .unit-card { background: white; border-radius: 12px; padding: 22px; border: 2px solid transparent; border: 1px solid var(--border); cursor: pointer; position: relative; }
         .unit-card.active.c404 { border: 2px solid var(--mint); }
         .unit-card.active.c2513 { border: 2px solid var(--red); }
         .pill-status { position: absolute; top: 20px; right: 20px; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; }
@@ -52,59 +56,54 @@
         td { padding: 12px; border-bottom: 1px solid var(--border); }
         .st-badge { padding: 4px 8px; border-radius: 4px; font-weight: 800; font-size: 10px; }
 
-        #loader { 
-            position: fixed; inset: 0; background: white; 
-            display: flex; flex-direction: column; justify-content: center; 
-            align-items: center; z-index: 10000; font-weight: 700; color: var(--navy); 
-        }
+        #loader { position: fixed; inset: 0; background: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10000; font-weight: 700; color: var(--navy); }
         .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--navy); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-<div id="loader">
-    <div class="spinner"></div>
-    <div id="loader-msg">CONECTANDO À BASE DE DADOS...</div>
-</div>
+<div id="loader"><div class="spinner"></div>CONECTANDO À PLANILHA...</div>
 
 <div class="container">
     <header>
         <div class="header-title">
-            <h1>Executive War Room | Projeto 404</h1>
-            <p style="font-size: 10px; opacity: 0.7;">Sincronizado via Google Cloud (CSV Mode)</p>
+            <h1 id="top-h1">Geral / Projeto 404</h1>
+            <p id="top-p" style="font-size:10px; opacity:0.8;">Atualizado em: <span id="time-now">--</span></p>
         </div>
-        <button class="f-btn" onclick="location.reload()">🔄 RECARREGAR</button>
+        <button class="btn-top" onclick="location.reload()">🔄 ATUALIZAR DADOS</button>
     </header>
 
     <div class="filter-bar">
-        <div style="display: flex; gap: 8px;">
-            <button class="f-btn" onclick="applyPreset('today', this)">Hoje</button>
-            <button class="f-btn active" onclick="applyPreset('7days', this)">7 dias</button>
-            <button class="f-btn" onclick="applyPreset('30days', this)">30 dias</button>
-            <button class="f-btn" onclick="applyPreset('all', this)">Tudo</button>
+        <div style="display: flex; gap: 6px;">
+            <button class="f-btn" onclick="setPreset('today', this)">Hoje</button>
+            <button class="f-btn" onclick="setPreset('7days', this)">7 dias</button>
+            <button class="f-btn" onclick="setPreset('30days', this)">30 dias</button>
+            <button class="f-btn active" onclick="setPreset('all', this)">Todo histórico</button>
         </div>
-        <input type="text" id="calendar-input" placeholder="📅 Período Personalizado">
+        <input type="text" id="date-range" placeholder="📅 Período Personalizado">
     </div>
 
     <div class="grid-units">
-        <div class="unit-card c404 active" id="card-404" onclick="selectProj('404')">
-            <h3>Projeto 404</h3>
-            <p id="count-404">--</p>
+        <div class="unit-card c404 active" id="card-404" onclick="setProj('404')">
+            <h3 style="font-size:16px;">Geral / Projeto 404</h3>
+            <p id="count-404" style="font-size:12px; color:var(--muted);">Carregando...</p>
             <div class="pill-status" id="pill-404">--</div>
         </div>
-        <div class="unit-card c2513" id="card-2513" onclick="selectProj('2513')">
-            <h3>Projeto 2513</h3>
-            <p id="count-2513">--</p>
+        <div class="unit-card c2513" id="card-2513" onclick="setProj('2513')">
+            <h3 style="font-size:16px;">Projeto 2513</h3>
+            <p id="count-2513" style="font-size:12px; color:var(--muted);">Carregando...</p>
             <div class="pill-status" id="pill-2513">--</div>
         </div>
     </div>
 
     <div class="main-grid">
         <div class="card-white">
-            <canvas id="mainChart"></canvas>
+            <p style="font-size:10px; font-weight:800; color:var(--muted); margin-bottom:15px;">TENDÊNCIA DE SPAM %</p>
+            <div style="height:320px;"><canvas id="mainChart"></canvas></div>
         </div>
         <div class="card-white">
+            <p style="font-size:10px; font-weight:800; color:var(--muted); margin-bottom:15px;">LOGS DE DISPAROS</p>
             <div class="table-wrap">
                 <table id="mainTable">
                     <thead>
@@ -118,109 +117,109 @@
 </div>
 
 <script>
-    const sheetId = '1_zrTPZ9tehp5YmSrBXAehqwhsc5i9JOQnP3tNUdsS2o';
+    const ssId = '1_zrTPZ9tehp5YmSrBXAehqwhsc5i9JOQnP3tNUdsS2o';
     const gid = '599913369';
-    const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
-
+    
     let masterData = [];
     let filteredData = [];
-    let activeProj = "404";
-    let chartInstance = null;
+    let currentProj = "404";
+    let chartObj = null;
     let fp = null;
 
-    // Inicialização
-    window.onload = () => {
-        fp = flatpickr("#calendar-input", {
+    // Inicializa Calendário
+    document.addEventListener('DOMContentLoaded', () => {
+        fp = flatpickr("#date-range", {
             mode: "range", locale: "pt", dateFormat: "d/m/Y",
             onChange: (dates) => {
                 if (dates.length === 2) {
                     document.querySelectorAll('.f-btn').forEach(b => b.classList.remove('active'));
-                    filterData(dates[0], dates[1]);
+                    filterByDates(dates[0], dates[1]);
                 }
             }
         });
-        loadData();
-    };
+    });
 
-    async function loadData() {
-        try {
-            const response = await fetch(csvUrl);
-            const text = await response.text();
-            const rows = text.split('\n').slice(1); // Pula o cabeçalho
+    google.charts.load('current', {'packages':['corechart']});
+    google.charts.setOnLoadCallback(fetchData);
 
-            masterData = rows.map(row => {
-                const cols = row.split(',');
-                if (cols.length < 3) return null;
-                
-                const dateStr = cols[0].trim();
+    function fetchData() {
+        const query = new google.visualization.Query(`https://docs.google.com/spreadsheets/d/${ssId}/gviz/tq?tqx=out:json&gid=${gid}`);
+        query.send(res => {
+            if (res.isError()) {
+                document.getElementById('loader').innerText = "Erro ao acessar a planilha. Verifique o compartilhamento.";
+                return;
+            }
+            const dt = res.getDataTable();
+            masterData = [];
+            for (let i = 0; i < dt.getNumberOfRows(); i++) {
+                const dateStr = dt.getFormattedValue(i, 0);
                 const p = dateStr.split('/');
-                const dObj = new Date(p[2], p[1]-1, p[0]);
+                const dateObj = new Date(p[2], p[1]-1, p[0]);
                 
-                let sVal = parseFloat(cols[2].replace('%', '').replace('"', '')) || 0;
-                // Se o valor vier como 0.001 em vez de 0.1, multiplica por 100
+                let sVal = dt.getValue(i, 2);
                 if (sVal > 0 && sVal < 0.05) sVal *= 100;
 
-                return {
+                masterData.push({
                     label: dateStr,
-                    date: dObj,
-                    camp: cols[1].replace(/"/g, '').trim(),
-                    spam: sVal
-                };
-            }).filter(d => d !== null && !isNaN(d.date.getTime()));
-
+                    date: dateObj,
+                    camp: String(dt.getValue(i, 1)),
+                    spam: parseFloat(sVal) || 0
+                });
+            }
             document.getElementById('loader').style.display = 'none';
-            applyPreset('7days');
-        } catch (e) {
-            document.getElementById('loader-msg').innerText = "Erro ao carregar dados. Verifique a publicação da planilha.";
-        }
+            document.getElementById('time-now').innerText = new Date().toLocaleString();
+            setPreset('all'); // MOSTRA TUDO AO INICIAR PARA NÃO DAR "0 DISPAROS"
+        });
     }
 
-    function applyPreset(type, el) {
+    function setPreset(mode, btn) {
         const end = new Date();
         const start = new Date();
-        if(el) {
+        if(btn) {
             document.querySelectorAll('.f-btn').forEach(b => b.classList.remove('active'));
-            el.classList.add('active');
+            btn.classList.add('active');
         }
-        if(type === '7days') start.setDate(end.getDate() - 7);
-        else if(type === '30days') start.setDate(end.getDate() - 30);
-        else if(type === 'all') start.setDate(end.getDate() - 365);
+        if(mode === 'today') { start.setHours(0,0,0,0); }
+        else if(mode === '7days') start.setDate(end.getDate() - 7);
+        else if(mode === '30days') start.setDate(end.getDate() - 30);
+        else if(mode === 'all') start.setFullYear(2020);
         
         if(fp) fp.setDate([start, end]);
-        filterData(start, end);
+        filterByDates(start, end);
     }
 
-    function filterData(start, end) {
+    function filterByDates(start, end) {
         const s = start.setHours(0,0,0,0);
         const e = end.setHours(23,59,59,999);
-        filteredData = masterData.filter(d => d.date >= s && d.date <= e);
+        filteredData = masterData.filter(d => d.date.getTime() >= s && d.date.getTime() <= e);
         render();
     }
 
-    function selectProj(id) {
-        activeProj = id;
+    function setProj(id) {
+        currentProj = id;
         document.querySelectorAll('.unit-card').forEach(c => c.classList.remove('active'));
         document.getElementById('card-'+id).classList.add('active');
+        document.getElementById('top-h1').innerText = id === '404' ? "Geral / Projeto 404" : "Projeto 2513";
         render();
     }
 
     function render() {
-        const list = filteredData.filter(d => d.camp.includes(activeProj));
-        
-        // Cards
+        // Atualiza Cards
         ["404", "2513"].forEach(id => {
-            const unitList = filteredData.filter(d => d.camp.includes(id));
-            const avg = unitList.length ? unitList.reduce((a,b)=>a+b.spam,0)/unitList.length : 0;
-            document.getElementById('count-'+id).innerText = `${unitList.length} registros encontrados`;
+            const list = filteredData.filter(d => d.camp.includes(id));
+            const avg = list.length ? list.reduce((a,b)=>a+b.spam, 0)/list.length : 0;
+            document.getElementById('count-'+id).innerText = `${list.length} disparos auditados`;
             const p = document.getElementById('pill-'+id);
-            p.innerText = `${avg < 0.3 ? 'SAUDÁVEL' : 'CRÍTICO'} (${avg.toFixed(2)}%)`;
+            p.innerText = `${avg < 0.3 ? 'SAUDÁVEL':'CRÍTICO'} (${avg.toFixed(2)}%)`;
             p.style.color = avg < 0.3 ? "var(--mint)" : "var(--red)";
             p.style.background = avg < 0.3 ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)";
         });
 
+        const activeList = filteredData.filter(d => d.camp.includes(currentProj));
+
         // Tabela
         const tbody = document.querySelector('#mainTable tbody');
-        tbody.innerHTML = list.slice().reverse().map(d => `
+        tbody.innerHTML = activeList.slice().reverse().map(d => `
             <tr>
                 <td>${d.label}</td>
                 <td style="color:var(--teal); font-weight:600">${d.camp}</td>
@@ -230,17 +229,16 @@
         `).join('');
 
         // Gráfico
-        if(chartInstance) chartInstance.destroy();
-        chartInstance = new Chart(document.getElementById('mainChart'), {
+        if(chartObj) chartObj.destroy();
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        chartObj = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: list.map(d => d.label),
+                labels: activeList.map(d => d.label),
                 datasets: [{
-                    label: 'Spam %',
-                    data: list.map(d => d.spam),
-                    borderColor: '#0D9488',
-                    tension: 0.3,
-                    fill: false
+                    label: 'Spam %', data: activeList.map(d => d.spam),
+                    borderColor: '#0D9488', backgroundColor: 'rgba(13,148,136,0.05)',
+                    fill: true, tension: 0.3, pointRadius: 4
                 }]
             },
             options: { responsive: true, maintainAspectRatio: false }
