@@ -344,6 +344,8 @@
                 id: 404,
                 title: "Projeto 404",
                 subtitle: "SOLINERO MX — NÚCLEO PRINCIPAL",
+                // URL que você nos forneceu inserida como padrão de sincronização direta
+                defaultSheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSePugXgmjZTIO3_a46XJCGpjDHSSSCzUDR-Jk9OkPMafPffOIVr-M23se--EiwGrr6XE08nWMnIUwf/pub?gid=372389848&single=true&output=csv",
                 badge: "SEM DADOS",
                 badgeStyle: "bg-emerald-50 text-emerald-600 font-bold border border-emerald-100",
                 ultimoDia: "24-05 (dom.)",
@@ -458,9 +460,66 @@
         let selectedProject = null;
 
         // Renderização Inicial
-        window.onload = function() {
-            renderProjectsGrid();
+        window.onload = async function() {
+            renderProjectsGrid(); // Renderiza primeiro com o fallback inicial
+            
+            // Tenta sincronizar silenciosamente as planilhas associadas em segundo plano ao abrir o app
+            for (let proj of projectsData) {
+                const savedUrl = localStorage.getItem(`gspread_url_${proj.id}`);
+                const urlToSync = savedUrl || proj.defaultSheetUrl;
+                if (urlToSync) {
+                    const success = await silentSyncGoogleSheets(urlToSync, proj.id);
+                    if (success) {
+                        console.log(`Projeto ${proj.id} sincronizado com sucesso na inicialização.`);
+                        if (proj.id === 404) {
+                            document.getElementById('syncIndicator').classList.remove('hidden');
+                        }
+                    }
+                }
+            }
         };
+
+        // Sincronização em segundo plano sem notificações intrusivas (toasts) na inicialização
+        async function silentSyncGoogleSheets(url, projectId) {
+            try {
+                let csvUrl = url;
+                if (url.includes("docs.google.com/spreadsheets") && !url.includes("pub?")) {
+                    const matches = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                    if (matches && matches[1]) {
+                        csvUrl = `https://docs.google.com/spreadsheets/d/${matches[1]}/export?format=csv`;
+                        const gidMatch = url.match(/[#&?]gid=([0-9]+)/);
+                        if (gidMatch && gidMatch[1]) {
+                            csvUrl += `&gid=${gidMatch[1]}`;
+                        }
+                    }
+                }
+
+                const response = await fetch(csvUrl);
+                if (!response.ok) return false;
+
+                const csvText = await response.text();
+                
+                // Valida se o documento retornado é HTML de login (Planilha Privada)
+                if (csvText.includes("<!DOCTYPE html>") || csvText.includes("<html") || csvText.includes("Google-Accounts-SignIn")) {
+                    return false;
+                }
+
+                const parsed = parseCSV(csvText);
+                if (parsed.data.length === 0) return false;
+
+                const mappedData = mapCSVToTable(parsed);
+                const proj = projectsData.find(p => p.id === projectId);
+                
+                if (proj) {
+                    proj.detalhesTabela = mappedData;
+                    recalculateMetricsFromTable(proj);
+                    return true;
+                }
+            } catch (err) {
+                console.error("Erro no carregamento de inicialização automática:", err);
+            }
+            return false;
+        }
 
         // Renderiza os cards do Hub conforme o Print 1
         function renderProjectsGrid() {
@@ -534,12 +593,13 @@
             badge.innerText = proj.statusGeral;
             badge.className = "text-xs font-black px-4 py-2 rounded-full border tracking-wider " + getBadgeColorClass(proj.statusGeral);
 
-            // Carregar dados salvos do localStorage se houver vinculação ativa
+            // Carregar dados salvos do localStorage se houver vinculação ativa ou default
             const savedUrl = localStorage.getItem(`gspread_url_${proj.id}`);
-            if (savedUrl) {
-                document.getElementById('sheetUrlInput').value = savedUrl;
+            const activeUrl = savedUrl || proj.defaultSheetUrl;
+            if (activeUrl) {
+                document.getElementById('sheetUrlInput').value = activeUrl;
                 document.getElementById('syncIndicator').classList.remove('hidden');
-                syncGoogleSheets(savedUrl, proj.id);
+                syncGoogleSheets(activeUrl, proj.id);
             } else {
                 document.getElementById('sheetUrlInput').value = "";
                 document.getElementById('syncIndicator').classList.add('hidden');
@@ -1037,15 +1097,17 @@
             }
             proj.statusGeral = `${label} - ${proj.mSpam}`;
 
-            // Atualiza na tela do Dashboard
-            document.getElementById('metricDias').innerText = proj.mDias;
-            document.getElementById('metricEnvios').innerText = proj.mEnvios;
-            document.getElementById('metricCampanhas').innerText = proj.mCampanhas;
-            document.getElementById('metricSpam').innerText = proj.mSpam;
+            // Atualiza na tela do Dashboard se ele estiver visível
+            if (selectedProject && selectedProject.id === proj.id) {
+                document.getElementById('metricDias').innerText = proj.mDias;
+                document.getElementById('metricEnvios').innerText = proj.mEnvios;
+                document.getElementById('metricCampanhas').innerText = proj.mCampanhas;
+                document.getElementById('metricSpam').innerText = proj.mSpam;
 
-            const badge = document.getElementById('dashStatusBadge');
-            badge.innerText = proj.statusGeral;
-            badge.className = "text-xs font-black px-4 py-2 rounded-full border tracking-wider " + getBadgeColorClass(proj.statusGeral);
+                const badge = document.getElementById('dashStatusBadge');
+                badge.innerText = proj.statusGeral;
+                badge.className = "text-xs font-black px-4 py-2 rounded-full border tracking-wider " + getBadgeColorClass(proj.statusGeral);
+            }
 
             // Atualiza as propriedades do Card na Home para que correspondam aos dados sincronizados
             const sorted = [...table].sort((a, b) => parseDateDM(b.data) - parseDateDM(a.data));
@@ -1053,6 +1115,8 @@
                 proj.ultimoDia = sorted[0].data;
                 proj.envios = sorted[0].envios;
                 proj.hojeGe03 = sorted[0].ge03;
+                proj.badge = "SINCRONIZADO";
+                proj.badgeStyle = "bg-emerald-50 text-emerald-600 font-bold border border-emerald-200 shadow-sm";
             }
             renderProjectsGrid();
         }
@@ -1061,7 +1125,7 @@
         async function syncGoogleSheets(url, projectId) {
             try {
                 let csvUrl = url;
-                if (url.includes("docs.google.com/spreadsheets") && !url.includes("export?format=csv") && !url.includes("pub?output=csv")) {
+                if (url.includes("docs.google.com/spreadsheets") && !url.includes("pub?")) {
                     const matches = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
                     if (matches && matches[1]) {
                         csvUrl = `https://docs.google.com/spreadsheets/d/${matches[1]}/export?format=csv`;
@@ -1121,9 +1185,9 @@
             const content = document.getElementById('syncModalContent');
             const input = document.getElementById('sheetUrlInput');
             
-            // Sugere o link exato inserido por padrão no Projeto 404
+            // Define por padrão a URL de exportação direta fornecida por você
             if (!input.value.trim() && selectedProject && selectedProject.id === 404) {
-                input.value = "https://docs.google.com/spreadsheets/d/1Qad4P2nADyNtaYC1gegxFrHjzgUwanGisQ3Sv7AYbOE/edit?gid=372389848#gid=372389848";
+                input.value = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSePugXgmjZTIO3_a46XJCGpjDHSSSCzUDR-Jk9OkPMafPffOIVr-M23se--EiwGrr6XE08nWMnIUwf/pub?gid=372389848&single=true&output=csv";
             }
             
             modal.classList.remove('opacity-0', 'pointer-events-none');
@@ -1259,8 +1323,9 @@
                 icon.classList.remove('fa-spin');
                 if (selectedProject) {
                     const savedUrl = localStorage.getItem(`gspread_url_${selectedProject.id}`);
-                    if (savedUrl) {
-                        syncGoogleSheets(savedUrl, selectedProject.id);
+                    const urlToSync = savedUrl || selectedProject.defaultSheetUrl;
+                    if (urlToSync) {
+                        syncGoogleSheets(urlToSync, selectedProject.id);
                     } else {
                         // Modo simulação padrão
                         const randomSpamVal = (0.05 + Math.random() * 0.35);
