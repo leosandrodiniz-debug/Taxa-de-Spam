@@ -1,22 +1,623 @@
-function renderCharts() {
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projeto 404 — Solinero MX | Executive War Room</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --navy-dark: #0A2540; 
+            --teal: #028090; 
+            --mint: #02C39A;
+            --alert-red: #E63946; 
+            --alert-yellow: #F4A261; 
+            --bg-light: #F4F6F9;
+            --card-bg: #FFFFFF; 
+            --text-dark: #1E293B; 
+            --text-muted: #64748B; 
+            --border-color: #E2E8F0;
+            --purple-select: #4F46E5; 
+            --purple-light: #EEF2FF;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', -apple-system, sans-serif; }
+        body { background-color: var(--bg-light); color: var(--text-dark); padding: 24px; line-height: 1.5; }
+        .container { max-width: 1440px; margin: 0 auto; }
+
+        /* HEADER INTERFACE */
+        header {
+            background-color: var(--navy-dark); color: white; padding: 20px 32px; border-radius: 12px;
+            margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(10, 37, 64, 0.08);
+        }
+        .header-title h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+        .header-title p { font-size: 13px; color: #94A3B8; }
+        
+        .header-controls { display: flex; align-items: center; gap: 12px; }
+        .btn-sync {
+            background-color: var(--mint); color: var(--navy-dark); padding: 8px 16px; border-radius: 20px;
+            font-size: 12px; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center;
+            gap: 6px; transition: all 0.2s; box-shadow: 0 2px 8px rgba(2, 195, 154, 0.3);
+        }
+        .btn-sync:hover { transform: translateY(-1px); background-color: #02b08b; }
+        .btn-sync:disabled { background-color: var(--text-muted); color: white; cursor: not-allowed; box-shadow: none; }
+
+        .badge-sem-aquisicao { background-color: var(--teal); color: white; padding: 6px 16px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+
+        /* KANBAN OPERACIONAL DINÂMICO */
+        .grid-hub-top { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .hub-card { 
+            background: var(--card-bg); border-radius: 10px; padding: 14px 20px; border: 1px solid var(--border-color); 
+            cursor: pointer; transition: all 0.2s ease; position: relative; user-select: none;
+        }
+        .hub-card:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(10, 37, 64, 0.06); }
+        .hub-card.active-main { border: 2px solid var(--navy-dark); background-color: #F8FAFC; }
+        .hub-indicator { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; border-top-left-radius: 10px; border-bottom-left-radius: 10px; }
+
+        /* FILTRO DE CALENDÁRIO CORPORATIVO GLOBAL MESTRE NO TOPO */
+        .filtro-master-wrapper { display: flex; justify-content: flex-end; margin-bottom: 24px; position: relative; }
+        .trigger-datepicker { 
+            background: #FFFFFF; border: 1px solid var(--border-color); padding: 8px 20px; 
+            border-radius: 24px; font-size: 13px; color: var(--text-dark); cursor: pointer; 
+            display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+            font-weight: 600; transition: all 0.2s; outline: none;
+        }
+        .trigger-datepicker:hover { border-color: var(--text-muted); background: #F8FAFC; }
+
+        .datepicker-panel { 
+            position: absolute; top: 100%; right: 0; background: white; border-radius: 12px; 
+            border: 1px solid var(--border-color); box-shadow: 0 8px 32px rgba(0,0,0,0.08); 
+            display: none; grid-template-columns: 140px 1fr; z-index: 1000; min-width: 520px; 
+            margin-top: 6px; overflow: hidden;
+        }
+        .panel-sidebar { background: #FFFFFF; border-right: 1px solid var(--border-color); padding: 10px 4px; display: flex; flex-direction: column; gap: 1px; }
+        .preset-btn { background: none; border: none; padding: 6px 12px; text-align: left; font-size: 12px; color: #64748B; cursor: pointer; border-radius: 6px; font-weight: 500; }
+        .preset-btn:hover { background: #F1F5F9; color: var(--text-dark); }
+        .preset-btn.active-preset { background: transparent; color: #4F46E5; font-weight: 600; }
+        
+        .panel-calendar-area { padding: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background: #FFFFFF; }
+        .month-view { text-align: center; }
+        .month-title { font-size: 13px; font-weight: 700; color: var(--text-dark); margin-bottom: 8px; text-transform: capitalize; }
+        .week-grid, .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; font-size: 11px; }
+        .week-day { color: #94A3B8; font-weight: 500; padding: 2px 0; }
+        
+        .day-cell { width: 23px; height: 23px; display: flex; align-items: center; justify-content: center; margin: 0 auto; cursor: pointer; font-weight: 500; color: var(--text-dark); border-radius: 50%; font-size: 11px; transition: all 0.15s; }
+        .day-cell:hover:not(.adj-month) { background: #E0E7FF; color: var(--purple-select); font-weight: 700; }
+        .day-cell.adj-month { color: #CBD5E1; cursor: default; pointer-events: none; } 
+        .day-cell.selected-day { background: var(--purple-light) !important; color: var(--purple-select) !important; font-weight: 700; border: 1px solid var(--purple-select); border-radius: 50%; }
+
+        .section-title { font-size: 14px; font-weight: 700; color: var(--navy-dark); margin: 32px 0 16px 0; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; }
+        .card-label-header-clean { font-weight: 700; color: var(--text-dark); font-size: 12px; margin-bottom: 16px; text-transform: uppercase; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px; }
+
+        .grid-graficos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 24px; }
+        @media (max-width: 1024px) { .grid-graficos { grid-template-columns: 1fr; } }
+
+        .chart-card { background: white; padding: 24px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; }
+        .chart-container { position: relative; height: 290px; min-height: 290px; width: 100%; }
+
+        .analise-box { background-color: #FFFDF5; border-left: 4px solid var(--alert-yellow); border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+        .analise-box.erro-conexao { background-color: #FEF2F2; border-left-color: var(--alert-red); color: #991B1B; padding: 16px; margin-bottom: 20px; border-radius: 8px; }
+
+        .btn-bypass {
+            background-color: var(--purple-select); color: white; border: none; padding: 8px 16px;
+            border-radius: 20px; font-size: 12px; font-weight: 600; margin-top: 12px; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(79, 70, 229, 0.2);
+            transition: all 0.2s;
+        }
+        .btn-bypass:hover { background-color: #3b31c4; transform: translateY(-1px); }
+
+        /* BROADCAST TABLE FILTER BAR */
+        .table-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: #F8FAFC; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px; }
+        .table-title { font-weight: 700; color: var(--navy-dark); font-size: 11px; text-transform: uppercase; }
+        
+        .filter-buttons { display: flex; gap: 6px; }
+        .btn-filter {
+            background: white; border: 1px solid var(--border-color); padding: 5px 12px; border-radius: 16px;
+            font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 4px;
+        }
+        .btn-filter:hover { background: #F1F5F9; border-color: var(--text-muted); }
+        .btn-filter.active-filter { background: var(--navy-dark); color: white; border-color: var(--navy-dark); }
+
+        /* BROADCAST TABLE */
+        .table-container { background: white; border-radius: 12px; border: 1px solid var(--border-color); overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
+        .scrollable-table { max-height: 290px; overflow-y: auto; }
+        .table-project { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+        .table-project th { background: #F8FAFC; color: var(--navy-dark); padding: 12px 16px; font-size: 11px; text-transform: uppercase; border-bottom: 1px solid var(--border-color); font-weight: 700; position: sticky; top: 0; z-index: 10; }
+        .table-project td { padding: 12px 16px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+
+        /* INSPECTION BLOCK DYNAMIC */
+        .secao-inspecao-container { display: none; margin-top: 24px; animation: fadeIn 0.2s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .card-inspecao-bloco { background: white; border-radius: 12px; border: 1px solid var(--border-color); padding: 24px; width: 100%; }
+
+        footer { background: var(--navy-dark); color: white; padding: 16px; border-radius: 12px; margin-top: 40px; font-size: 11px; text-align: center; }
+        .badge-status { padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; display: inline-block; }
+        .badge-bom { background: rgba(2, 195, 154, 0.15); color: #019373; }
+        .badge-medio { background: rgba(244, 162, 97, 0.15); color: #c96b1d; }
+        .badge-ruim { background: rgba(230, 57, 70, 0.15); color: var(--alert-red); }
+
+        .row-clicavel { cursor: pointer; transition: background 0.15s ease; }
+        .row-clicavel:hover { background: #F1F5F9; }
+        .row-clicavel.row-selected { background: #EEF2FF !important; border-left: 4px solid var(--purple-select); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <div class="header-title">
+                <h1 id="txt-header-titulo">Carregando...</h1>
+                <p>Métricas Consolidadas de Performance Operacional e Entregabilidade</p>
+            </div>
+            <div class="header-controls">
+                <button class="btn-sync" id="btn-sync-sheets" onclick="sincronizarGoogleSheets()">
+                    <span>🔄 Sincronizar Sheets</span>
+                </button>
+                <span class="badge-sem-aquisicao">Selo: SEM Aquisição</span>
+            </div>
+        </header>
+
+        <div id="banner-alerta-local" style="display:none;" class="analise-box erro-conexao">
+            <strong>⚠️ RESTRIÇÃO DE REQUISIÇÃO LOCAL DETECTADA (CORS DE NAVEGADOR)</strong><br>
+            O navegador bloqueou a busca automática online porque o HTML está rodando direto do seu computador.<br>
+            <em>Não se preocupe: Esse aviso sumirá e funcionará sozinho assim que colocar no GitHub Pages.</em><br>
+            <button class="btn-bypass" onclick="document.getElementById('bypass-file-input').click()">📂 Carregar arquivo CSV Manualmente (Para testar local)</button>
+        </div>
+
+        <section>
+            <div class="section-title">🏢 Unidades Operacionais (Detecção de Projetos Automática)</div>
+            <div class="grid-hub-top" id="hub-projetos-container"></div>
+        </section>
+
+        <div class="filtro-master-wrapper">
+            <button class="trigger-datepicker" onclick="toggleDatePickerPanel(event)">
+                <span>🗫 Selecione um período: <span id="txt-faixa-ativa-label" style="font-weight: 700; color:#4F46E5;">Últimos 7 dias</span></span>
+            </button>
+
+            <div class="datepicker-panel" id="modal-datepicker-interface">
+                <div class="panel-sidebar">
+                    <button class="preset-btn" id="preset-hoje" onclick="selectPreset('hoje')">Hoje</button>
+                    <button class="preset-btn" id="preset-ontem" onclick="selectPreset('ontem')">Ontem</button>
+                    <button class="preset-btn" id="preset-mes" onclick="selectPreset('mes')">Mês até hoje</button>
+                    <button class="preset-btn active-preset" id="preset-7d" onclick="selectPreset('7d')">Últimos 7 dias</button>
+                    <button class="preset-btn" id="preset-30d" onclick="selectPreset('30d')">Últimos 30 dias</button>
+                    <button class="preset-btn" id="preset-90d" onclick="selectPreset('90d')">Últimos 90 dias</button>
+                </div>
+                <div class="panel-calendar-area"></div>
+            </div>
+        </div>
+
+        <div id="dashboard-core-view">
+            <div class="section-title">🛡️ Monitoramento Sanitário Postmaster & Linha do Tempo</div>
+            <div class="analise-box" id="caixa-insights-postmaster"></div>
+
+            <div class="grid-graficos">
+                <div class="chart-card">
+                    <div class="card-label-header-clean">Spam Diário (%) Linha de Histórico</div>
+                    <div class="chart-container"><canvas id="gSpamDia"></canvas></div>
+                </div>
+                
+                <div class="table-container">
+                    <div class="table-toolbar">
+                        <div class="table-title">📋 Campanhas de Broadcast Auditadas</div>
+                        <div class="filter-buttons">
+                            <button class="btn-filter active-filter" id="btn-filt-todos" onclick="alterarFiltroCampanha('todos')">Todos (<span id="cnt-todos">0</span>)</button>
+                            <button class="btn-filter" id="btn-filt-aprovado" onclick="alterarFiltroCampanha('aprovado')">Aprovados 🟢 (<span id="cnt-aprovado">0</span>)</button>
+                            <button class="btn-filter" id="btn-filt-otimizar" onclick="alterarFiltroCampanha('otimizar')">Otimizar 🟡 (<span id="cnt-otimizar">0</span>)</button>
+                            <button class="btn-filter" id="btn-filt-remover" onclick="alterarFiltroCampanha('remover')">Remover 🔴 (<span id="cnt-remover">0</span>)</button>
+                        </div>
+                    </div>
+                    <div class="scrollable-table">
+                        <table class="table-project" id="tabela-broadcast-dados">
+                            <thead>
+                                <tr><th>DATA</th><th>IDENTIFICADOR BROADCAST</th><th>SPAM %</th><th>DIRECIONAMENTO TÁTICO</th></tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="secao-inspecao-container" id="painel-auditoria-avancada">
+                <div class="section-title" id="txt-titulo-inspecao">🔍 Inspecionar Campanha</div>
+                <div class="card-inspecao-bloco">
+                    <h4 style="font-size:12px; font-weight:700; color:var(--navy-dark); text-transform:uppercase; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:6px;">📊 Comparativo de Entregabilidade Temporal</h4>
+                    <table class="table-project">
+                        <thead>
+                            <tr style="background:#F8FAFC;"><th>Período Analítico</th><th>Taxa de Spam %</th><th>Status Operacional</th></tr>
+                        </thead>
+                        <tbody id="tabela-inspecao-kpis"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <input type="file" id="bypass-file-input" accept=".csv" style="display:none;" onchange="processarBypassManual(event)">
+
+        <footer>
+            <p>🟢 Excelente (Aprovado): &lt; 0.10% | 🟡 Saudável (Otimizar): 0.10% - 0.29% | 🔴 Crítico (Remover): &ge; 0.30%</p>
+        </footer>
+    </div>
+
+    <div id="custom-toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 8px;"></div>
+
+    <script>
+        const SPREADSHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSePugXgmjZTIO3_a46XJCGpjDHSSSCzUDR-Jk9OkPMafPffOIVr-M23se--EiwGrr6XE08nWMnIUwf/pub?output=csv";
+
+        const activeCharts = { gSpamDia: null };
+        const PROJETOS_METADATA = {
+            "404": "Geral / Projeto 404 (Solinero MX)",
+            "2513": "Projeto 2513 (MX02-Ep10)",
+            "2470": "Projeto 2470 (US09-HRZ)",
+            "2547": "Projeto 2547 (MX05-JBT)"
+        };
+
+        // Dados de segurança para inicialização limpa
+        let LOGS_PLANILHA = {};
+
+        const DADOS = { activeProjectId: "404", activePreset: "7d", activeFilter: "todos", startDate: null, endDate: null, projetosConfig: {} };
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById("custom-toast-container");
+            const toast = document.createElement("div");
+            toast.style.padding = '12px 20px'; toast.style.borderRadius = '8px'; toast.style.fontSize = '13px'; toast.style.fontWeight = '600';
+            toast.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)'; toast.style.display = 'flex'; toast.style.alignItems = 'center'; toast.style.gap = '8px'; toast.style.transition = 'all 0.3s ease';
+            
+            if (type === 'success') {
+                toast.style.background = 'rgba(2, 195, 154, 0.15)'; toast.style.border = '1px solid var(--mint)'; toast.style.color = '#019373';
+                toast.innerHTML = `<span>✅</span> <span>${message}</span>`;
+            } else {
+                toast.style.background = 'rgba(230, 57, 70, 0.15)'; toast.style.border = '1px solid var(--alert-red)'; toast.style.color = 'var(--alert-red)';
+                toast.innerHTML = `<span>⚠️</span> <span>${message}</span>`;
+            }
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+        }
+
+        // Extrator inteligente: Prioriza os IDs cadastrados antes de aceitar regex genérico
+        function extractProjectId(campaignName) {
+            if (!campaignName) return null;
+            const conhecidos = Object.keys(PROJETOS_METADATA);
+            for (let id of conhecidos) {
+                if (campaignName.includes(id)) return id;
+            }
+            const match = campaignName.match(/(?:^|[^0-9])(\d{3,4})(?:[^0-9]|$)/);
+            return match ? match[1] : null;
+        }
+
+        function processarTextoCSV(csvText) {
+            const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== "");
+            if (lines.length === 0) return false;
+
+            // ANALISADOR CORPORATIVO DE SEPARADOR REGIONAL: Detecta se a planilha usa , ou ;
+            const cabecalhoTeste = lines[0] || "";
+            const separador = (cabecalhoTeste.split(';').length > cabecalhoTeste.split(',').length) ? ';' : ',';
+
+            let headerIdx = -1;
+            for (let i = 0; i < lines.length; i++) {
+                const lineLower = lines[i].toLowerCase();
+                if (lineLower.includes("data") && (lineLower.includes("campanha") || lineLower.includes("identificador") || lineLower.includes("id")) && (lineLower.includes("spam") || lineLower.includes("taxa"))) {
+                    headerIdx = i;
+                    break;
+                }
+            }
+            
+            if (headerIdx === -1) {
+                for (let i = 0; i < lines.length; i++) {
+                    const cols = lines[i].split(separador);
+                    if (cols.length >= 3 && (/^\d{4}-\d{2}-\d{2}$/.test(cols[0].trim()) || /^\d{2}\/\d{2}\/\d{4}$/.test(cols[0].trim()) || /^\d{2}\/\d{2}$/.test(cols[0].trim()))) {
+                        headerIdx = i - 1;
+                        break;
+                    }
+                }
+            }
+
+            if (headerIdx === -1) return false;
+
+            const dataLines = lines.slice(headerIdx + 1);
+            const novosLogs = {};
+            let registrosContabilizados = 0;
+
+            dataLines.forEach(line => {
+                const cols = []; let current = ""; let inQuotes = false;
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    if (char === '"') inQuotes = !inQuotes;
+                    else if (char === separador && !inQuotes) { cols.push(current.trim()); current = ""; }
+                    else current += char;
+                }
+                cols.push(current.trim());
+
+                if (cols.length < 3) return;
+                const rawDate = cols[0]; const rawCampaign = cols[1]; const rawSpam = cols[2];
+                if (!rawDate || !rawCampaign || !rawSpam) return;
+
+                let dateFormatted = "";
+                if (rawDate.includes("-")) {
+                    const parts = rawDate.split("-");
+                    if(parts[0].length === 4) dateFormatted = `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}`;
+                } else if (rawDate.includes("/")) {
+                    const parts = rawDate.split("/");
+                    dateFormatted = `${parts[0].padStart(2, '0')}/${parts[1].padStart(2, '0')}`;
+                }
+
+                if (!dateFormatted) return;
+
+                let spamVal = parseFloat(rawSpam.replace("%", "").replace(",", "."));
+                if (isNaN(spamVal)) return;
+
+                if (spamVal > 0 && spamVal < 0.05 && !rawSpam.includes("%")) spamVal = spamVal * 100;
+
+                const projId = extractProjectId(rawCampaign);
+                if (!projId) return;
+
+                if (!novosLogs[dateFormatted]) novosLogs[dateFormatted] = [];
+                novosLogs[dateFormatted].push({ id: rawCampaign, spam: spamVal });
+                registrosContabilizados++;
+            });
+
+            if (registrosContabilizados > 0) {
+                LOGS_PLANILHA = novosLogs;
+                reconstruirProjetosEAbas();
+                return true;
+            }
+            return false;
+        }
+
+        function renderHubTopInitial() {
+            const container = document.getElementById("hub-projetos-container");
+            container.innerHTML = "";
+            
+            Object.keys(DADOS.projetosConfig).forEach(id => {
+                const proj = DADOS.projetosConfig[id];
+                const isActive = id === DADOS.activeProjectId ? "active-main" : "";
+                
+                let indicatorColor = "var(--mint)";
+                if (proj.status === "medio") indicatorColor = "var(--alert-yellow)";
+                if (proj.status === "ruim") indicatorColor = "var(--alert-red)";
+
+                const card = document.createElement("div");
+                card.className = `hub-card ${isActive}`;
+                card.setAttribute("data-id", id);
+                card.onclick = () => changeProject(id);
+                card.innerHTML = `
+                    <div class="hub-indicator" style="background-color: ${indicatorColor};"></div>
+                    <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;">ID: ${id}</div>
+                    <div style="font-weight: 700; font-size: 14px; margin: 4px 0;">${proj.nome.split(" / ").pop()}</div>
+                    <div style="font-size: 12px; color: var(--text-dark);">Média Spam: <strong>${proj.mediaSpam.toFixed(2)}%</strong></div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function reconstruirProjetosEAbas() {
+            const detectados = {};
+            for (let data in LOGS_PLANILHA) {
+                LOGS_PLANILHA[data].forEach(c => {
+                    const id = extractProjectId(c.id);
+                    if (id) {
+                        if (!detectados[id]) detectados[id] = { totalSpam: 0, count: 0 };
+                        detectados[id].totalSpam += c.spam; detectados[id].count++;
+                    }
+                });
+            }
+
+            DADOS.projetosConfig = {};
+            for (let id in detectados) {
+                const avg = detectados[id].totalSpam / detectados[id].count;
+                DADOS.projetosConfig[id] = {
+                    nome: PROJETOS_METADATA[id] || `Projeto ${id} (Autodetectado)`,
+                    status: avg >= 0.30 ? "ruim" : (avg >= 0.10 ? "medio" : "bom"),
+                    mediaSpam: parseFloat(avg.toFixed(3))
+                };
+            }
+
+            // AUTO-PIVOT DE PROJETO: Se o projeto atual não existir na planilha nova, foca no primeiro encontrado
+            const idsDisponiveis = Object.keys(DADOS.projetosConfig);
+            if (idsDisponiveis.length > 0 && !idsDisponiveis.includes(DADOS.activeProjectId)) {
+                DADOS.activeProjectId = idsDisponiveis[0];
+            }
+            
+            document.getElementById("txt-header-titulo").innerText = DADOS.projetosConfig[DADOS.activeProjectId]?.nome || `Projeto ${DADOS.activeProjectId}`;
+
+            buildCalendarGrids(); 
+            renderHubTopInitial(); 
+            selectPreset(DADOS.activePreset);
+        }
+
+        async function sincronizarGoogleSheets() {
+            const btn = document.getElementById("btn-sync-sheets");
+            btn.disabled = true; btn.innerText = "⏳ Sincronizando...";
+            
+            try {
+                const response = await fetch(`${SPREADSHEET_CSV_URL}&_nocache=${Date.now()}`);
+                if (!response.ok) throw new Error();
+                const csvText = await response.text();
+                
+                const processadoComSucesso = processarTextoCSV(csvText);
+                if (processadoComSucesso) {
+                    showToast("Sincronizado com sucesso com o Google Sheets.", "success");
+                    document.getElementById("banner-alerta-local").style.display = "none";
+                } else {
+                    showToast("Planilha lida, mas nenhuma coluna válida de dados foi encontrada.", "error");
+                }
+            } catch (error) {
+                console.warn("Bloqueio de CORS local detectado ou erro de rede.");
+                document.getElementById("banner-alerta-local").style.display = "block";
+                showToast("Navegador bloqueou conexão local. Use o arquivo manual para testar.", "error");
+            } finally {
+                btn.disabled = false; btn.innerText = "🔄 Sincronizar Sheets";
+            }
+        }
+
+        function processarBypassManual(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if (processarTextoCSV(e.target.result)) {
+                    showToast("Planilha manual processada com sucesso!", "success");
+                    document.getElementById("banner-alerta-local").style.display = "none";
+                } else {
+                    showToast("Formato inválido. Verifique os títulos de coluna da planilha.", "error");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function getAnchorDate() {
+            let dates = Object.keys(LOGS_PLANILHA);
+            if (dates.length === 0) return new Date(2026, 5, 1);
+            let maxDate = null;
+            dates.forEach(dStr => {
+                let parts = dStr.split("/");
+                let d = new Date(2026, parseInt(parts[1]) - 1, parseInt(parts[0]));
+                if (!maxDate || d > maxDate) maxDate = d;
+            });
+            return maxDate;
+        }
+
+        function updateActiveDateRange() {
+            const anchor = getAnchorDate();
+            if (DADOS.activePreset === "custom") return;
+            DADOS.endDate = new Date(anchor);
+            if (DADOS.activePreset === "hoje") DADOS.startDate = new Date(anchor);
+            else if (DADOS.activePreset === "ontem") { let y = new Date(anchor); y.setDate(y.getDate() - 1); DADOS.startDate = y; DADOS.endDate = y; }
+            else if (DADOS.activePreset === "7d") { let s = new Date(anchor); s.setDate(s.getDate() - 6); DADOS.startDate = s; }
+            else if (DADOS.activePreset === "30d") { let s = new Date(anchor); s.setDate(s.getDate() - 29); DADOS.startDate = s; }
+            else if (DADOS.activePreset === "mes") DADOS.startDate = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+        }
+
+        function toggleDatePickerPanel(event) { event.stopPropagation(); const p = document.getElementById("modal-datepicker-interface"); p.style.display = p.style.display === "grid" ? "none" : "grid"; }
+        function selectPreset(preset) { DADOS.activePreset = preset; selectPresetDisplay(); }
+        function selectPresetDisplay() {
+            updateActiveDateRange();
+            document.getElementById("txt-faixa-ativa-label").innerText = DADOS.activePreset === "7d" ? "Últimos 7 dias" : `Período Ativo (${DADOS.activePreset})`;
+            refreshCalendarUI(); renderDashboardCompleto(); document.getElementById("modal-datepicker-interface").style.display = "none";
+        }
+        function selectSpecificDay(day, month, year, element) {
+            const clickedDate = new Date(year, parseInt(month) - 1, day);
+            if (!DADOS.startDate || (DADOS.startDate && DADOS.endDate)) { DADOS.startDate = clickedDate; DADOS.endDate = null; DADOS.activePreset = "custom"; }
+            else { if (clickedDate >= DADOS.startDate) { DADOS.endDate = clickedDate; document.getElementById("modal-datepicker-interface").style.display = "none"; } else DADOS.startDate = clickedDate; }
+            refreshCalendarUI(); renderDashboardCompleto();
+        }
+        function formatDateString(date) { return String(date.getDate()).padStart(2, '0') + '/' + String(date.getMonth() + 1).padStart(2, '0'); }
+        function refreshCalendarUI() {
+            document.querySelectorAll(".day-cell:not(.adj-month)").forEach(cell => {
+                const day = parseInt(cell.getAttribute("data-day")); const month = parseInt(cell.getAttribute("data-month")); const cellDate = new Date(2026, month - 1, day);
+                cell.classList.remove("selected-day");
+                if (DADOS.startDate && !DADOS.endDate && cellDate.getTime() === DADOS.startDate.getTime()) cell.classList.add("selected-day");
+                else if (DADOS.startDate && DADOS.endDate && cellDate >= DADOS.startDate && cellDate <= DADOS.endDate) cell.classList.add("selected-day");
+            });
+        }
+
+        function buildCalendarGrids() {
+            let dates = Object.keys(LOGS_PLANILHA); let months = [];
+            if (dates.length === 0) months = [{ month: 4, year: 2026 }, { month: 5, year: 2026 }];
+            else {
+                let uniqueMonths = {}; dates.forEach(dStr => { let parts = dStr.split("/"); uniqueMonths[`${parseInt(parts[1]) - 1}-2026`] = { month: parseInt(parts[1]) - 1, year: 2026 }; });
+                months = Object.values(uniqueMonths).sort((a,b) => a.month - b.month);
+            }
+            const calendarArea = document.querySelector(".panel-calendar-area"); calendarArea.innerHTML = "";
+            const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            
+            months.forEach(mObj => {
+                let monthDiv = document.createElement("div"); monthDiv.className = "month-view";
+                let titleDiv = document.createElement("div"); titleDiv.className = "month-title"; titleDiv.innerText = `${monthNames[mObj.month]} ${mObj.year}`; monthDiv.appendChild(titleDiv);
+                let weekGrid = document.createElement("div"); weekGrid.className = "week-grid";
+                ["dom", "seg", "ter", "qua", "qui", "sex", "sab"].forEach(wd => { let wdDiv = document.createElement("div"); wdDiv.className = "week-day"; wdDiv.innerText = wd; weekGrid.appendChild(wdDiv); });
+                monthDiv.appendChild(weekGrid);
+                let daysGrid = document.createElement("div"); daysGrid.className = "days-grid";
+                let firstDay = new Date(mObj.year, mObj.month, 1).getDay(); let daysInMonth = new Date(mObj.year, mObj.month + 1, 0).getDate();
+                for (let i = 0; i < firstDay; i++) { let dayCell = document.createElement("div"); dayCell.className = "day-cell adj-month"; dayCell.innerText = ""; daysGrid.appendChild(dayCell); }
+                for (let d = 1; d <= daysInMonth; d++) {
+                    let dayCell = document.createElement("div"); dayCell.className = "day-cell"; dayCell.setAttribute("data-day", d); dayCell.setAttribute("data-month", mObj.month + 1); dayCell.innerText = d;
+                    dayCell.onclick = function() { selectSpecificDay(d, String(mObj.month + 1).padStart(2,'0'), mObj.year, dayCell); }; daysGrid.appendChild(dayCell);
+                }
+                monthDiv.appendChild(daysGrid); calendarArea.appendChild(monthDiv);
+            });
+            refreshCalendarUI();
+        }
+
+        function changeProject(id) { DADOS.activeProjectId = id; document.querySelectorAll(".hub-card").forEach(c => c.classList.remove("active-main")); const card = document.querySelector(`[data-id="${id}"]`); if (card) card.classList.add("active-main"); document.getElementById("txt-header-titulo").innerText = DADOS.projetosConfig[id]?.nome || `Projeto ${id}`; document.getElementById("painel-auditoria-avancada").style.display = "none"; DADOS.activeFilter = "todos"; renderDashboardCompleto(); }
+        function alterarFiltroCampanha(filtro) { DADOS.activeFilter = filtro; document.querySelectorAll(".btn-filter").forEach(btn => btn.classList.remove("active-filter")); let targetId = filtro === "aprovado" ? "btn-filt-aprovado" : (filtro === "otimizar" ? "btn-filt-otimizar" : (filtro === "remover" ? "btn-filt-remover" : "btn-filt-todos")); document.getElementById(targetId).classList.add("active-filter"); renderDashboardCompleto(false); }
+
+        function renderDashboardCompleto(atualizarSpamDia = true) {
+            const tPreset = DADOS.activePreset; const projId = DADOS.activeProjectId; let rawList = [];
+            if (tPreset === "custom" && DADOS.startDate) {
+                let start = new Date(DADOS.startDate.getFullYear(), DADOS.startDate.getMonth(), DADOS.startDate.getDate());
+                let end = DADOS.endDate ? new Date(DADOS.endDate.getFullYear(), DADOS.endDate.getMonth(), DADOS.endDate.getDate()) : start;
+                Object.keys(LOGS_PLANILHA).forEach(k => {
+                    let parts = k.split("/"); let cDate = new Date(2026, parseInt(parts[1]) - 1, parseInt(parts[0]));
+                    if (cDate >= start && cDate <= end) LOGS_PLANILHA[k].forEach(item => rawList.push({ data: k, id: item.id, spam: item.spam }));
+                });
+            } else {
+                updateActiveDateRange();
+                if (DADOS.startDate && DADOS.endDate) {
+                    let current = new Date(DADOS.startDate);
+                    while (current <= DADOS.endDate) {
+                        let k = formatDateString(current);
+                        if (LOGS_PLANILHA[k]) LOGS_PLANILHA[k].forEach(item => rawList.push({ data: k, id: item.id, spam: item.spam }));
+                        current.setDate(current.getDate() + 1);
+                    }
+                }
+            }
+
+            // SEPARAÇÃO E FILTRAGEM ESTRITA POR PROJETO ATIVO
+            let campanhasProjetos = rawList.filter(c => extractProjectId(c.id) === projId);
+            
+            document.getElementById("cnt-todos").innerText = campanhasProjetos.length;
+            document.getElementById("cnt-aprovado").innerText = campanhasProjetos.filter(c => c.spam <= 0.10).length;
+            document.getElementById("cnt-otimizar").innerText = campanhasProjetos.filter(c => c.spam > 0.10 && c.spam < 0.30).length;
+            document.getElementById("cnt-remover").innerText = campanhasProjetos.filter(c => c.spam >= 0.30).length;
+
+            let campanhasExibidas = [...campanhasProjetos];
+            if (DADOS.activeFilter === "aprovado") campanhasExibidas = campanhasExibidas.filter(c => c.spam <= 0.10);
+            else if (DADOS.activeFilter === "otimizar") campanhasExibidas = campanhasExibidas.filter(c => c.spam > 0.10 && c.spam < 0.30);
+            else if (DADOS.activeFilter === "remover") campanhasExibidas = campanhasExibidas.filter(c => c.spam >= 0.30);
+
+            const tbody = document.getElementById("tabela-broadcast-dados").querySelector("tbody");
+            if(campanhasExibidas.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:24px;">Nenhuma campanha ativa para o Projeto ${projId} neste período.</td></tr>`;
+            } else {
+                tbody.innerHTML = campanhasExibidas.map(c => {
+                    let statusLabel = c.spam <= 0.10 ? "Aprovado" : (c.spam < 0.30 ? "Otimizar" : "Remover");
+                    return `<tr class="row-clicavel" onclick="inspecionarCampanhaRow(this, '${c.id}', '${c.data}', ${c.spam})">
+                        <td style="color: #64748B;">${c.data}</td><td style="color: #028090; font-weight: 500;">${c.id}</td><td>${c.spam.toFixed(2)}%</td><td style="font-weight: 600;">${statusLabel}</td>
+                    </tr>`;
+                }).join('');
+            }
+            if (DADOS.projetosConfig[projId]) renderInsights();
+            if (atualizarSpamDia) renderCharts();
+        }
+
+        function renderInsights() {
+            const projId = DADOS.activeProjectId; const spamMedio = DADOS.projetosConfig[projId]?.mediaSpam || 0.0;
+            document.getElementById("caixa-insights-postmaster").innerHTML = `<div><strong>💡 AUDITORIA DE ENTREGABELIDADE: PROJETO ${projId}</strong><p style="font-size:12px;">Média sanitária atual do Postmaster em: ${spamMedio.toFixed(3)}%.</p></div>`;
+        }
+
+        function inspecionarCampanhaRow(element, idCampanha, dataCampanha, spamAtual) {
+            document.querySelectorAll(".row-clicavel").forEach(r => r.classList.remove("row-selected")); element.classList.add("row-selected");
+            document.getElementById("txt-titulo-inspecao").innerText = `🔍 Auditoria Avançada de Lote: ${idCampanha}`;
+            document.getElementById("tabela-inspecao-kpis").innerHTML = `<tr><td>Disparo Executado (${dataCampanha})</td><td>${spamAtual.toFixed(2)}%</td><td>Mapeado</td></tr>`;
+            document.getElementById("painel-auditoria-avancada").style.display = "block";
+        }
+
+        function renderCharts() {
             const projId = DADOS.activeProjectId;
             
-            // 1. Filtra APENAS as datas que possuem histórico real para o projeto selecionado
             let datasDoProjeto = [];
             Object.keys(LOGS_PLANILHA).forEach(k => {
                 let temLogDoProjeto = LOGS_PLANILHA[k].some(l => extractProjectId(l.id) === projId);
-                if (temLogDoProjeto) {
-                    datasDoProjeto.push(k);
-                }
+                if (temLogDoProjeto) datasDoProjeto.push(k);
             });
 
-            // 2. Ordena cronologicamente essas datas específicas
             datasDoProjeto.sort((a,b) => { 
                 let ptsA = a.split("/"); let ptsB = b.split("/"); 
                 return new Date(2026, parseInt(ptsA[1])-1, parseInt(ptsA[0])) - new Date(2026, parseInt(ptsB[1])-1, parseInt(ptsB[0])); 
             });
 
-            // 3. Limita a exibição aos últimos 15 dias de atividade real para não espremer a tela
             let timelineEixoSpam = datasDoProjeto.slice(-15);
 
             if (timelineEixoSpam.length === 0) {
@@ -24,7 +625,6 @@ function renderCharts() {
                 return;
             }
 
-            // 4. Calcula a média real de spam por dia para este projeto
             let valoresEixoSpam = [];
             timelineEixoSpam.forEach(k => {
                 let logs = LOGS_PLANILHA[k] || []; 
@@ -48,7 +648,6 @@ function renderCharts() {
                                 borderColor: '#028090', 
                                 backgroundColor: 'rgba(2, 128, 144, 0.08)',
                                 pointRadius: 5, 
-                                pointHoverRadius: 7,
                                 tension: 0.2,
                                 fill: true
                             }, 
@@ -67,27 +666,17 @@ function renderCharts() {
                         maintainAspectRatio: false,
                         scales: {
                             y: {
-                                beginAtZero: true, // Força o gráfico a iniciar em 0% de spam
-                                suggestedMax: 0.40, // Mantém uma folga visual acima do teto de 0.30%
-                                ticks: {
-                                    callback: function(value) {
-                                        return value.toFixed(2) + '%'; // Coloca a % no eixo Y
-                                    }
-                                }
-                            }
-                        },
-                        plugins: {
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return context.dataset.label + ': ' + context.raw.toFixed(3) + '%';
-                                    }
-                                }
+                                beginAtZero: true,
+                                suggestedMax: 0.40,
+                                ticks: { callback: function(value) { return value.toFixed(2) + '%'; } }
                             }
                         }
                     }
                 });
-            } catch(e) {
-                console.error("Erro ao gerar gráfico:", e);
-            }
+            } catch(e) {}
         }
+
+        document.addEventListener("DOMContentLoaded", function() { sincronizarGoogleSheets(); });
+    </script>
+</body>
+</html>
