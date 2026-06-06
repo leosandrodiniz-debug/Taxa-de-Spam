@@ -73,3 +73,138 @@
         </div>
         <div class="header-actions">
             <div class="badge-selo">Selo: SEM Aquisição</div>
+            <button class="btn-header" onclick="location.reload()">🔄 ATUALIZAR</button>
+        </div>
+    </header>
+
+    <div class="section-label">🏢 UNIDADE OPERACIONAL SELECIONADA</div>
+    <div class="grid-units">
+        <div class="unit-card c404 active" id="card-404" onclick="setProj('404')">
+            <h2>Geral / Projeto 404</h2>
+            <p id="cnt-404">Analisando disparos...</p>
+            <div class="pill-status" id="pill-404">CARREGANDO...</div>
+        </div>
+        <div class="unit-card c2513" id="card-2513" onclick="setProj('2513')">
+            <h2>Projeto 2513 (MX02-Ep10)</h2>
+            <p id="cnt-2513">Analisando disparos...</p>
+            <div class="pill-status" id="pill-2513">CARREGANDO...</div>
+        </div>
+    </div>
+
+    <div class="insight">
+        <div style="font-size: 24px;">💡</div>
+        <div class="insight-content">
+            <h4 id="in-title">AUDITORIA DE ENTREGABILIDADE</h4>
+            <p id="in-desc">Processando análise estratégica em tempo real...</p>
+        </div>
+    </div>
+
+    <div class="main-grid">
+        <div class="card-white">
+            <div class="card-title">SPAM DIÁRIO (%) — LINHA DE HISTÓRICO</div>
+            <div style="height: 320px;"><canvas id="mainChart"></canvas></div>
+        </div>
+        <div class="card-white">
+            <div class="card-title">📋 CAMPANHAS DE BROADCAST AUDITADAS</div>
+            <div class="table-area">
+                <table id="mainTable">
+                    <thead>
+                        <tr><th>DATA</th><th>IDENTIFICADOR</th><th>SPAM %</th><th>STATUS</th></tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // NOVA URL DE PUBLICAÇÃO CONVERTIDA PARA DADOS
+    const PUB_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQJWbPHrzlNhOXKjHoJ2uBn-sdLKHRbEEM0tl5YuRA0bgUXshMjQLRqYzv4n8GF0oPDBtYqiKhQ_6pH/pub?output=csv';
+
+    let masterData = [];
+    let currentProj = "404";
+    let chartInstance = null;
+
+    async function fetchData() {
+        try {
+            const response = await fetch(PUB_URL + '&cache=' + new Date().getTime());
+            const csvText = await response.text();
+            
+            Papa.parse(csvText, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    processData(results.data);
+                }
+            });
+        } catch (error) {
+            document.getElementById('loader').innerText = "ERRO DE SINCRONIZAÇÃO. Verifique a publicação da planilha.";
+        }
+    }
+
+    function processData(data) {
+        masterData = data.map(row => {
+            const keys = Object.keys(row);
+            const dataKey = keys.find(k => k.toLowerCase().includes('data'));
+            const campKey = keys.find(k => k.toLowerCase().includes('campanha') || k.toLowerCase().includes('identificador'));
+            const spamKey = keys.find(k => k.toLowerCase().includes('spam'));
+
+            let s = row[spamKey] ? String(row[spamKey]).replace('%','').replace(',','.') : "0";
+            let v = parseFloat(s) || 0;
+            if (v > 0 && v < 0.05 && !String(row[spamKey]).includes('%')) v *= 100;
+
+            return { data: row[dataKey], camp: row[campKey], spam: v };
+        }).filter(item => item.camp);
+
+        document.getElementById('loader').style.display = 'none';
+        render();
+    }
+
+    function setProj(id) {
+        currentProj = id;
+        document.querySelectorAll('.unit-card').forEach(c => c.classList.remove('active'));
+        document.getElementById(id === '404' ? 'card-404' : 'card-2513').classList.add('active');
+        document.getElementById('h-title').innerText = id === '404' ? "Geral / Projeto 404" : "Projeto 2513 (MX02-Ep10)";
+        render();
+    }
+
+    function render() {
+        ["404", "2513"].forEach(id => {
+            const f = masterData.filter(d => String(d.camp).includes(id));
+            const avg = f.length ? f.reduce((a,b)=>a+b.spam, 0)/f.length : 0;
+            document.getElementById('cnt-'+id).innerText = `${f.length} disparos auditados no total`;
+            const pill = document.getElementById('pill-'+id);
+            const isB = avg < 0.3;
+            pill.innerText = `${isB ? 'SAUDÁVEL':'CRÍTICO'} (${avg.toFixed(3)}%)`;
+            pill.style.background = isB ? "rgba(16, 185, 129, 0.1)" : "rgba(239, 68, 68, 0.1)";
+            pill.style.color = isB ? "var(--mint)" : "var(--red)";
+        });
+
+        const active = masterData.filter(d => String(d.camp).includes(currentProj));
+        const avgActive = active.length ? active.reduce((a,b)=>a+b.spam, 0)/active.length : 0;
+        document.getElementById('in-desc').innerText = avgActive < 0.3 ? "A operação está saudável." : "Risco crítico de bloqueio.";
+
+        const tbody = document.querySelector('#mainTable tbody');
+        tbody.innerHTML = active.slice().reverse().slice(0, 40).map(d => {
+            let st = "Aprovado", bg = "#DCFCE7", cl = "#166534";
+            if(d.spam >= 0.1) { st = "Otimizar"; bg = "#FEF9C3"; cl = "#854D0E"; }
+            if(d.spam >= 0.3) { st = "Remover"; bg = "#FEE2E2"; cl = "#991B1B"; }
+            return `<tr><td>${d.data}</td><td style="color:var(--teal); font-weight:700">${d.camp}</td><td>${d.spam.toFixed(2)}%</td><td><span class="st-badge" style="background:${bg}; color:${cl}">${st}</span></td></tr>`;
+        }).join('');
+
+        const chartD = active.slice(-12);
+        if(chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(document.getElementById('mainChart'), {
+            type: 'line',
+            data: {
+                labels: chartD.map(d => d.data),
+                datasets: [{ label: 'Spam %', data: chartD.map(d => d.spam), borderColor: '#028090', backgroundColor: 'rgba(2, 128, 144, 0.05)', fill: true, tension: 0.4, pointRadius: 5 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: v => v+'%' } } } }
+        });
+    }
+    fetchData();
+</script>
+</body>
+</html>
