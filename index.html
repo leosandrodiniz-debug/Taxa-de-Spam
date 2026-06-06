@@ -3,208 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Projeto 404 — Solinero MX | Executive War Room</title>
+    <title>Projeto 404 — Executive War Room</title>
+    <!-- Resolve o erro do Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root {
-            --navy-dark: #0A2540; --teal: #028090; --mint: #02C39A;
-            --alert-red: #E63946; --alert-yellow: #F4A261; --bg-light: #F4F6F9;
-            --card-bg: #FFFFFF; --text-dark: #1E293B; --text-muted: #64748B;
-            --border-color: #E2E8F0; --purple-select: #4F46E5;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-        body { background-color: var(--bg-light); padding: 24px; color: var(--text-dark); }
-        .container { max-width: 1400px; margin: 0 auto; }
-        header {
-            background: var(--navy-dark); color: white; padding: 20px 30px; border-radius: 12px;
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;
-        }
-        .btn-sync {
-            background: var(--mint); color: var(--navy-dark); border: none; padding: 10px 20px;
-            border-radius: 20px; font-weight: 700; cursor: pointer; transition: 0.3s;
-        }
-        .btn-sync:hover { background: #02b08b; transform: scale(1.05); }
-        .grid-hub { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; margin-bottom: 30px; }
-        .card-hub { 
-            background: white; padding: 15px; border-radius: 10px; border: 1px solid var(--border-color); 
-            cursor: pointer; position: relative; border-left: 5px solid #ccc;
-        }
-        .card-hub.active { border-color: var(--navy-dark); background: #f0f4f8; border-left-color: var(--navy-dark); }
-        .grid-main { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .panel { background: white; padding: 20px; border-radius: 12px; border: 1px solid var(--border-color); }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-        th { text-align: left; padding: 10px; background: #F8FAFC; border-bottom: 2px solid var(--border-color); }
-        td { padding: 10px; border-bottom: 1px solid var(--border-color); }
-        .badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-        .badge-bom { background: #dcfce7; color: #166534; }
-        .badge-medio { background: #fef3c7; color: #92400e; }
-        .badge-ruim { background: #fee2e2; color: #991b1b; }
-        #status-msg { position: fixed; bottom: 20px; right: 20px; padding: 10px 20px; border-radius: 5px; color: white; display: none; }
+        :root { --navy: #0A2540; --mint: #02C39A; --bg: #F4F6F9; }
+        body { background: var(--bg); font-family: sans-serif; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .btn { background: var(--mint); border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border-bottom: 1px solid #ddd; padding: 10px; text-align: left; font-size: 13px; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; }
+        .bom { background: #dcfce7; color: #166534; }
+        #debug-console { background: #333; color: #0f0; padding: 10px; font-family: monospace; font-size: 11px; margin-top: 20px; border-radius: 5px; height: 100px; overflow-y: auto; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <header>
-        <div>
-            <h1 id="titulo-projeto">Projeto 404 — Geral</h1>
-            <p style="font-size: 12px; color: #94A3B8;">Sincronizado via Google Sheets API (CSV)</p>
-        </div>
-        <button class="btn-sync" onclick="carregarDados()">🔄 Sincronizar Dados</button>
-    </header>
-
-    <div class="grid-hub" id="container-hubs">
-        <!-- Hubs de projetos carregam aqui -->
-    </div>
-
-    <div class="grid-main">
-        <div class="panel">
-            <h3 style="font-size: 14px; margin-bottom: 15px;">HISTÓRICO DE SPAM (%)</h3>
-            <div style="height: 300px;"><canvas id="graficoSpam"></canvas></div>
-        </div>
-
-        <div class="panel">
-            <h3 style="font-size: 14px; margin-bottom: 15px;">LOG DE CAMPANHAS</h3>
-            <div style="max-height: 300px; overflow-y: auto;">
-                <table id="tabela-dados">
-                    <thead>
-                        <tr><th>DATA</th><th>CAMPANHA</th><th>SPAM %</th><th>STATUS</th></tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Dashboard Solinero - Projeto <span id="proj-id">404</span></h2>
+        <button class="btn" onclick="fetchData()">🔄 Sincronizar Agora</button>
     </div>
 </div>
 
-<div id="status-msg"></div>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+    <div class="card">
+        <h3>Tendência de Spam</h3>
+        <canvas id="chartSpam" height="250"></canvas>
+    </div>
+    <div class="card">
+        <h3>Log de Dados</h3>
+        <table id="dataTable">
+            <thead>
+                <tr><th>Data</th><th>Campanha</th><th>Spam %</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="debug-console">Sistema iniciado. Aguardando sincronização...</div>
 
 <script>
-    // URL CONFIGURADA COM SEU ID E GID
-    const URL_CSV = "https://docs.google.com/spreadsheets/d/1Qad4P2nADyNtaYC1gegxFrHjzgUwanGisQ3Sv7AYbOE/export?format=csv&gid=372389848";
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/1Qad4P2nADyNtaYC1gegxFrHjzgUwanGisQ3Sv7AYbOE/export?format=csv&gid=372389848";
 
-    let bancoDeDados = [];
-    let projetoAtivo = "404";
-    let meuGrafico = null;
+    let chart;
 
-    function avisar(msg, erro = false) {
-        const el = document.getElementById("status-msg");
-        el.style.display = "block";
-        el.style.background = erro ? "#E63946" : "#028090";
-        el.innerText = msg;
-        setTimeout(() => el.style.display = "none", 3000);
+    function log(msg) {
+        const consoleEl = document.getElementById("debug-console");
+        consoleEl.innerHTML += `<br>> ${msg}`;
+        consoleEl.scrollTop = consoleEl.scrollHeight;
     }
 
-    async function carregarDados() {
-        avisar("Buscando dados...");
+    async function fetchData() {
+        log("Iniciando requisição ao Google Sheets...");
         try {
-            const resposta = await fetch(URL_CSV + "&nocache=" + new Date().getTime());
-            if (!resposta.ok) throw new Error();
-            const texto = await resposta.text();
-            processarCSV(texto);
-            avisar("Dados atualizados!");
-        } catch (e) {
-            avisar("Erro! Verifique se 'Publicou na Web' como CSV.", true);
+            const response = await fetch(CSV_URL + "&t=" + Date.now());
+            if (!response.ok) throw new Error("Não foi possível acessar a planilha. Verifique se ela foi PUBLICADA NA WEB.");
+            
+            const text = await response.text();
+            log("Dados recebidos. Processando CSV...");
+            parseCSV(text);
+        } catch (err) {
+            log("ERRO: " + err.message);
         }
     }
 
-    function processarCSV(texto) {
-        const linhas = texto.split("\n");
-        const resultado = [];
-        const projetos = new Set(["404"]);
-
-        // Começa do 1 para pular o cabeçalho
-        for (let i = 1; i < linhas.length; i++) {
-            const colunas = linhas[i].split(",");
-            if (colunas.length < 3) continue;
-
-            const data = colunas[0].trim();
-            const campanha = colunas[1].trim();
-            const spamStr = colunas[2].trim().replace("%", "").replace(",", ".");
-            const spamVal = parseFloat(spamStr);
-
-            if (!data || isNaN(spamVal)) continue;
-
-            // Identifica o projeto pelo número na campanha
-            const match = campanha.match(/\d+/);
-            const idProj = match ? match[0] : "Outro";
-            projetos.add(idProj);
-
-            resultado.push({ data, campanha, spam: spamVal, idProj });
-        }
-
-        bancoDeDados = resultado;
-        renderizarHubs(Array.from(projetos));
-        atualizarInterface();
-    }
-
-    function renderizarHubs(lista) {
-        const container = document.getElementById("container-hubs");
-        container.innerHTML = lista.sort().map(id => `
-            <div class="card-hub ${projetoAtivo === id ? 'active' : ''}" onclick="setProjeto('${id}')">
-                <strong>Projeto ${id}</strong><br>
-                <small>Unidade Operacional</small>
-            </div>
-        `).join("");
-    }
-
-    function setProjeto(id) {
-        projetoAtivo = id;
-        document.getElementById("titulo-projeto").innerText = `Projeto ${id} — Detalhes`;
-        carregarDados();
-    }
-
-    function atualizarInterface() {
-        const dadosFiltrados = bancoDeDados.filter(item => item.idProj === projetoAtivo);
-        
-        // Tabela
-        const tbody = document.querySelector("#tabela-dados tbody");
+    function parseCSV(data) {
+        const rows = data.split("\n").slice(1);
+        const tbody = document.querySelector("#dataTable tbody");
         tbody.innerHTML = "";
         
         const labels = [];
-        const valores = [];
+        const values = [];
 
-        dadosFiltrados.reverse().forEach(item => {
-            let status = "badge-bom"; 
-            let txt = "Aprovado";
-            if (item.spam >= 0.3) { status = "badge-ruim"; txt = "Remover"; }
-            else if (item.spam >= 0.1) { status = "badge-medio"; txt = "Otimizar"; }
+        rows.forEach(row => {
+            const cols = row.split(",");
+            if (cols.length >= 3) {
+                const date = cols[0].trim();
+                const campaign = cols[1].trim();
+                const spam = parseFloat(cols[2].replace(",", ".").replace("%", ""));
 
-            const row = `<tr>
-                <td>${item.data}</td>
-                <td style="color:var(--teal); font-weight:600;">${item.campanha}</td>
-                <td>${item.spam.toFixed(2)}%</td>
-                <td><span class="badge ${status}">${txt}</span></td>
-            </tr>`;
-            tbody.innerHTML += row;
-
-            labels.push(item.data);
-            valores.push(item.spam);
+                if (!isNaN(spam)) {
+                    tbody.innerHTML += `<tr><td>${date}</td><td>${campaign}</td><td><b>${spam.toFixed(2)}%</b></td></tr>`;
+                    labels.push(date);
+                    values.push(spam);
+                }
+            }
         });
 
-        // Gráfico
-        const ctx = document.getElementById('graficoSpam').getContext('2d');
-        if (meuGrafico) meuGrafico.destroy();
-        
-        meuGrafico = new Chart(ctx, {
+        updateChart(labels.reverse(), values.reverse());
+        log("Interface atualizada com " + values.length + " registros.");
+    }
+
+    function updateChart(labels, values) {
+        const ctx = document.getElementById('chartSpam').getContext('2d');
+        if (chart) chart.destroy();
+        chart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: labels.reverse(),
-                datasets: [{
-                    label: 'Taxa de Spam %',
-                    data: valores.reverse(),
-                    borderColor: '#028090',
-                    backgroundColor: 'rgba(2, 128, 144, 0.1)',
-                    fill: true,
-                    tension: 0.3
-                }]
+                labels: labels,
+                datasets: [{ label: 'Spam %', data: values, borderColor: '#02C39A', tension: 0.3, fill: true, backgroundColor: 'rgba(2, 195, 154, 0.1)' }]
             },
             options: { responsive: true, maintainAspectRatio: false }
         });
     }
 
-    // Carregar ao abrir
-    window.onload = carregarDados;
+    window.onload = fetchData;
 </script>
 
 </body>
