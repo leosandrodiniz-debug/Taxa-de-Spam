@@ -333,6 +333,19 @@
 
     <!-- ================= SISTEMA DE DADOS E DINÂMICA (JAVASCRIPT) ================= -->
     <script>
+        // Função auxiliar para analisar datas no formato DD-MM ou DD/MM de forma robusta
+        function parseDateDM(str) {
+            if (!str) return new Date(0);
+            // Suporta formatos com hifens, barras e espaços (ex: "24-05", "23/05", "01-06 (seg.)")
+            const match = str.match(/([0-9]{1,2})[-/]([0-9]{1,2})/);
+            if (match) {
+                const day = parseInt(match[1]);
+                const month = parseInt(match[2]) - 1; // Mês baseado em 0 no JS
+                return new Date(2026, month, day); // Fixando o ano base do projeto (2026)
+            }
+            return new Date(0);
+        }
+
         // Dados de Fallback (Padrão quando não houver planilha google vinculada)
         const projectsData = [
             {
@@ -577,7 +590,10 @@
             const tbody = document.getElementById('historyTableBody');
             tbody.innerHTML = '';
 
-            rows.forEach(r => {
+            // Ordena os dados decrescentemente (mais recente primeiro) baseados nas datas de Junho / Maio
+            const sortedRows = [...rows].sort((a, b) => parseDateDM(b.data) - parseDateDM(a.data));
+
+            sortedRows.forEach(r => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition-colors";
                 
@@ -602,7 +618,7 @@
         // Classificação de cor para percentuais de spam baseados nas novas categorias
         function getSpamColorClass(val) {
             if (!val || val === "—") return "text-slate-400 font-normal";
-            const num = parseFloat(val.replace('%', ''));
+            const num = parseFloat(String(val).replace('%', ''));
             if (num < 0.10) {
                 return "text-[#00b489]"; 
             } else if (num >= 0.10 && num < 0.30) {
@@ -621,23 +637,59 @@
             return `<span class="text-slate-400">0</span>`;
         }
 
-        // Constrói Gráfico Multilinhas de histórico
+        // Constrói Gráfico Multilinhas de histórico totalmente dinâmico
         function buildHistoricalChart(proj) {
             const ctx = document.getElementById('historicalChart').getContext('2d');
             if (activeChart) { activeChart.destroy(); }
 
-            const labels = ["25-04 (sáb.)", "28-04 (ter.)", "01-05 (sex.)", "04-05 (seg.)", "07-05 (qui.)", "10-05 (dom.)", "13-05 (qua.)", "16-05 (sáb.)", "19-05 (ter.)", "24-05 (dom.)"];
-            const datasets = proj.datasetsSpam.map(ds => {
-                return {
-                    label: ds.label,
-                    data: ds.data,
-                    borderColor: ds.color,
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    pointRadius: 3,
-                    pointHoverRadius: 6,
-                    tension: 0.4
-                };
+            // Ordena de forma cronológica (mais antigo na esquerda -> mais recente na direita)
+            const sortedHistory = [...proj.detalhesTabela].sort((a, b) => parseDateDM(a.data) - parseDateDM(b.data));
+            const labels = sortedHistory.map(h => h.data);
+
+            // Mapeia de forma autônoma todas as chaves adicionais da planilha (ignorando colunas fixas)
+            const keysToRender = Object.keys(proj.detalhesTabela[0]).filter(k => k !== 'data' && k !== 'envios' && k !== 'ge03');
+            
+            const colors = {
+                'ctr u.': '#8b5cf6',
+                'geral': '#f59e0b',
+                'h1': '#06b6d4',
+                'h9': '#a78bfa',
+                'h12': '#eab308',
+                'h14': '#ec4899',
+                'h15': '#10b981',
+                'h16': '#3b82f6',
+                'h18': '#f97316',
+                'h19': '#14b8a6',
+                'h21': '#f43f5e'
+            };
+            const defaultColors = ['#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f43f5e', '#a78bfa', '#14b8a6'];
+            
+            let colorIndex = 0;
+            const datasets = [];
+
+            keysToRender.forEach(key => {
+                const hasData = sortedHistory.some(h => h[key] && h[key] !== '—');
+                if (hasData) {
+                    const dataPoints = sortedHistory.map(h => {
+                        const val = h[key];
+                        if (val && val !== '—') {
+                            return parseFloat(String(val).replace('%', ''));
+                        }
+                        return null;
+                    });
+                    
+                    datasets.push({
+                        label: key.toUpperCase(),
+                        data: dataPoints,
+                        borderColor: colors[key] || defaultColors[colorIndex++ % defaultColors.length],
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        pointHoverRadius: 6,
+                        tension: 0.4,
+                        spanGaps: true // Conecta pontos mesmo havendo lacunas '—' no período
+                    });
+                }
             });
 
             datasets.push({
@@ -670,7 +722,7 @@
                     },
                     scales: {
                         y: {
-                            min: 0.00, max: 0.60,
+                            min: 0.00,
                             ticks: {
                                 stepSize: 0.15,
                                 callback: value => value.toFixed(2) + '%',
@@ -684,16 +736,17 @@
             });
         }
 
-        // Constrói os gráficos adicionais: Volume por Dia, Taxa de Spam por Dia (Novo) e Média por Horário
+        // Constrói os gráficos adicionais totalmente sincronizados
         function buildComplementaryCharts(proj) {
-            const sortedHistory = [...proj.detalhesTabela].reverse();
+            // Ordena de forma cronológica (mais antigo para mais recente)
+            const sortedHistory = [...proj.detalhesTabela].sort((a, b) => parseDateDM(a.data) - parseDateDM(b.data));
             const dailyLabels = sortedHistory.map(h => h.data);
 
             // 1. GRÁFICO DE BARRAS POR DIA (Volume de Envios)
             const ctxDaily = document.getElementById('dailyVolumeChart').getContext('2d');
             if (dailyVolumeChartInstance) { dailyVolumeChartInstance.destroy(); }
 
-            const dailyData = sortedHistory.map(h => parseInt(h.envios.replace(/\./g, '')) || 0);
+            const dailyData = sortedHistory.map(h => parseInt(String(h.envios).replace(/\./g, '')) || 0);
             dailyVolumeChartInstance = new Chart(ctxDaily, {
                 type: 'bar',
                 data: {
@@ -715,7 +768,7 @@
                             grid: { color: '#f1f5f9' },
                             ticks: {
                                 color: '#94a3b8', font: { size: 10, weight: '600' },
-                                callback: val => val >= 1000 ? (val / 1000) + 'k' : val
+                                callback: val => val >= 1000000 ? (val / 1000000).toFixed(1) + 'M' : val >= 1000 ? (val / 1000) + 'k' : val
                             }
                         },
                         x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10, weight: '600' } } }
@@ -723,19 +776,19 @@
                 }
             });
 
-            // 2. NOVO: GRÁFICO DE LINHA - TAXA DE SPAM POR DIA
+            // 2. GRÁFICO DE LINHA - TAXA DE SPAM POR DIA (Média real)
             const ctxDailySpam = document.getElementById('dailySpamLineChart').getContext('2d');
             if (dailySpamLineChartInstance) { dailySpamLineChartInstance.destroy(); }
 
-            // Calcular taxa de spam real média de cada dia somando e tirando a média dos horários válidos
+            const campaignKeys = Object.keys(proj.detalhesTabela[0]).filter(k => k !== 'data' && k !== 'envios' && k !== 'ge03');
+
             const dailySpamData = sortedHistory.map(h => {
                 let sum = 0;
                 let count = 0;
-                const campaignKeys = ['h1', 'h9', 'h12', 'h14', 'h15', 'h16', 'h18', 'h19', 'h21'];
                 campaignKeys.forEach(k => {
                     const val = h[k];
                     if (val && val !== '—') {
-                        const numericVal = parseFloat(val.replace('%', ''));
+                        const numericVal = parseFloat(String(val).replace('%', ''));
                         if (!isNaN(numericVal)) {
                             sum += numericVal;
                             count++;
@@ -778,10 +831,9 @@
                     plugins: { legend: { display: false } },
                     scales: {
                         y: {
-                            min: 0, max: 0.60,
+                            min: 0,
                             grid: { color: '#f1f5f9' },
                             ticks: {
-                                stepSize: 0.15,
                                 color: '#94a3b8', font: { size: 10, weight: '600' },
                                 callback: val => val.toFixed(2) + '%'
                             }
@@ -795,8 +847,7 @@
             const ctxCampaign = document.getElementById('campaignSpamChart').getContext('2d');
             if (campaignSpamChartInstance) { campaignSpamChartInstance.destroy(); }
 
-            const campaignKeys = ['h1', 'h9', 'h12', 'h14', 'h15', 'h16', 'h18', 'h19', 'h21'];
-            const campaignLabels = ['Campanha H1', 'Campanha H9', 'Campanha H12', 'Campanha H14', 'Campanha H15', 'Campanha H16', 'Campanha H18', 'Campanha H19', 'Campanha H21'];
+            const campaignLabels = campaignKeys.map(k => k.toUpperCase().startsWith('H') ? 'Campanha ' + k.toUpperCase() : k.toUpperCase());
 
             const campaignData = campaignKeys.map(key => {
                 let sum = 0;
@@ -804,7 +855,7 @@
                 proj.detalhesTabela.forEach(row => {
                     const cellVal = row[key];
                     if (cellVal && cellVal !== '—') {
-                        const numericVal = parseFloat(cellVal.replace('%', ''));
+                        const numericVal = parseFloat(String(cellVal).replace('%', ''));
                         if (!isNaN(numericVal)) {
                             sum += numericVal;
                             count++;
@@ -837,10 +888,9 @@
                     plugins: { legend: { display: false } },
                     scales: {
                         x: {
-                            min: 0, max: 0.60,
+                            min: 0,
                             grid: { color: '#f1f5f9' },
                             ticks: {
-                                stepSize: 0.15,
                                 color: '#94a3b8', font: { size: 10, weight: '600' },
                                 callback: val => val.toFixed(2) + '%'
                             }
@@ -891,7 +941,7 @@
             return { headers, data };
         }
 
-        // Mapeia os dados brutos do Google Sheets estruturados
+        // Mapeia os dados brutos do Google Sheets estruturados dinamicamente
         function mapCSVToTable(parsed) {
             const { headers, data } = parsed;
             
@@ -904,20 +954,19 @@
             const ge03Key = findKey(['≥ 0,3', '>=0,3', '>=0.3', 'ge0.3', 'ge03']);
             
             return data.map(row => {
-                return {
+                const mappedRow = {
                     data: row[dataKey] || '—',
                     envios: row[enviosKey] || '0',
-                    ge03: row[ge03Key] || '0',
-                    h1: row['h1'] || '—',
-                    h9: row['h9'] || '—',
-                    h12: row['h12'] || '—',
-                    h14: row['h14'] || '—',
-                    h15: row['h15'] || '—',
-                    h16: row['h16'] || '—',
-                    h18: row['h18'] || '—',
-                    h19: row['h19'] || '—',
-                    h21: row['h21'] || '—'
+                    ge03: row[ge03Key] || '0'
                 };
+                
+                // Copia automaticamente qualquer outra coluna presente na planilha (H1, H9, CTR, etc.)
+                Object.keys(row).forEach(key => {
+                    if (key !== dataKey && key !== enviosKey && key !== ge03Key) {
+                        mappedRow[key] = row[key] || '—';
+                    }
+                });
+                return mappedRow;
             });
         }
 
@@ -932,14 +981,14 @@
             let spamCount = 0;
 
             table.forEach(row => {
-                const env = parseInt(row.envios.replace(/\./g, '')) || 0;
+                const env = parseInt(String(row.envios).replace(/\./g, '')) || 0;
                 totalEnvios += env;
 
-                const campaignKeys = ['h1', 'h9', 'h12', 'h14', 'h15', 'h16', 'h18', 'h19', 'h21'];
+                const campaignKeys = Object.keys(row).filter(k => k !== 'data' && k !== 'envios' && k !== 'ge03');
                 campaignKeys.forEach(k => {
                     const val = row[k];
                     if (val && val !== '—') {
-                        const numericVal = parseFloat(val.replace('%', ''));
+                        const numericVal = parseFloat(String(val).replace('%', ''));
                         if (!isNaN(numericVal)) {
                             totalSpamSum += numericVal;
                             spamCount++;
@@ -974,7 +1023,7 @@
             badge.className = "text-xs font-black px-4 py-2 rounded-full border tracking-wider " + getBadgeColorClass(proj.statusGeral);
         }
 
-        // Sincroniza dinamicamente usando a API de Fetch de CSVs
+        // Sincroniza dinamicamente usando a API de Fetch de CSVs e mantendo o identificador de aba (gid)
         async function syncGoogleSheets(url, projectId) {
             try {
                 let csvUrl = url;
@@ -982,6 +1031,12 @@
                     const matches = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
                     if (matches && matches[1]) {
                         csvUrl = `https://docs.google.com/spreadsheets/d/${matches[1]}/export?format=csv`;
+                        
+                        // Extrai dinamicamente o GID se ele existir na URL original para sincronizar a aba correta
+                        const gidMatch = url.match(/[#&?]gid=([0-9]+)/);
+                        if (gidMatch && gidMatch[1]) {
+                            csvUrl += `&gid=${gidMatch[1]}`;
+                        }
                     }
                 }
 
@@ -1011,12 +1066,12 @@
                     localStorage.setItem(`gspread_url_${projectId}`, url);
                     document.getElementById('syncIndicator').classList.remove('hidden');
                     
-                    showToast("Planilha sincronizada!");
+                    showToast("Planilha sincronizada com sucesso!");
                     return true;
                 }
             } catch (err) {
                 console.error(err);
-                showToast("Erro de leitura: certifique-se de publicar na web como CSV.");
+                showToast("Erro de leitura: certifique-se de liberar o acesso de leitura na planilha.");
                 return false;
             }
         }
@@ -1025,6 +1080,13 @@
         function openSyncModal() {
             const modal = document.getElementById('syncModal');
             const content = document.getElementById('syncModalContent');
+            const input = document.getElementById('sheetUrlInput');
+            
+            // Sugere de forma inteligente o seu link direto se o campo estiver vazio
+            if (!input.value.trim() && selectedProject && selectedProject.id === 404) {
+                input.value = "https://docs.google.com/spreadsheets/d/1Qad4P2nADyNtaYC1gegxFrHjzgUwanGisQ3Sv7AYbOE/edit?gid=372389848#gid=372389848";
+            }
+            
             modal.classList.remove('opacity-0', 'pointer-events-none');
             content.classList.remove('translate-y-4');
         }
@@ -1039,7 +1101,7 @@
         function handleSyncSubmit() {
             const url = document.getElementById('sheetUrlInput').value.trim();
             if (!url) {
-                showToast("Por favor, cole um link válido.");
+                showToast("Por favor, forneça um link válido.");
                 return;
             }
             if (selectedProject) {
