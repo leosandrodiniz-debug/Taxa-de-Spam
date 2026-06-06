@@ -181,7 +181,7 @@
                         <!-- Barra de Pesquisa e Botão Exportar CSV -->
                         <div class="flex items-center gap-2 w-full sm:w-auto">
                             <div class="relative w-full sm:w-48">
-                                <span class="absolute inset-y-0 flex items-center pl-3 text-slate-400 pointer-events-none">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 pointer-events-none">
                                     <i class="fa-solid fa-magnifying-glass text-xs"></i>
                                 </span>
                                 <input type="text" id="tableSearch" onkeyup="filterTable()" placeholder="Buscar data..." class="pl-8 pr-3 py-1.5 w-full rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
@@ -372,7 +372,7 @@
             return 'Geral';
         }
 
-        // Função auxiliar para analisar datas no formato DD-MM, DD/MM, YYYY-MM-DD de forma flexível e robusta
+        // Função auxiliar para analisar datas de forma flexível e robusta
         function parseDateDM(str) {
             if (!str) return new Date(0);
             let s = String(str).trim();
@@ -594,7 +594,7 @@
             return false;
         }
 
-        // Sincronização em segundo plano sem notificações intrusivas na inicialização
+        // Sincronização em segundo plano sem notificações na inicialização
         async function silentSyncGoogleSheets(url, projectId) {
             try {
                 let csvUrl = getCleanCsvUrl(url);
@@ -760,9 +760,22 @@
                 return;
             }
 
-            // Detecta dinamicamente todas as colunas extras de campanhas que vieram da planilha
-            const allKeys = Object.keys(rows[0]);
-            const campaignKeys = allKeys.filter(k => k !== 'data' && k !== 'envios' && k !== 'ge03');
+            // Descobre dinamicamente todos os cabeçalhos de slot existentes em qualquer linha
+            const campaignKeysSet = new Set();
+            rows.forEach(r => {
+                Object.keys(r).forEach(k => {
+                    if (k !== 'data' && k !== 'envios' && k !== 'ge03') {
+                        campaignKeysSet.add(k);
+                    }
+                });
+            });
+
+            // Ordena os slots de horário encontrados de forma cronológica/numérica (H1, H9, H12, etc.)
+            const campaignKeys = Array.from(campaignKeysSet).sort((a, b) => {
+                const numA = parseInt(a.replace(/\D/g, '')) || 0;
+                const numB = parseInt(b.replace(/\D/g, '')) || 0;
+                return numA - numB;
+            });
 
             // Renderiza cabeçalhos da tabela dinamicamente
             let headerHTML = `
@@ -801,7 +814,7 @@
             });
         }
 
-        // Classificação de colas de spam na tabela diária
+        // Classificação de cores de spam na tabela diária
         function getSpamColorClass(val) {
             if (!val || val === "—") return "text-slate-400 font-normal";
             const num = cleanSpamValue(val);
@@ -1184,10 +1197,11 @@
             const campaignCol = headers.find(h => h.includes('campanha') || h.includes('campaign') || h.includes('nome'));
             const spamCol = headers.find(h => (h.includes('taxa') || h.includes('spam') || h.includes('reputação') || h.includes('reputacao')) && h !== campaignCol);
 
-            // Se a planilha estiver no formato de LOG (linhas individuais por campanha, como na imagem e435e4.png)
+            // Se a planilha estiver no formato de LOG (linhas individuais por campanha)
             // nós agrupamos e pivotamos por data automaticamente
             if (campaignCol && spamCol) {
                 const dailyGroups = {};
+                const detectedSlots = new Set();
                 
                 data.forEach(row => {
                     const dateStr = row[dataKey] || '—';
@@ -1209,10 +1223,21 @@
                     const campName = row[campaignCol] || '';
                     const spamVal = row[spamCol] || '—';
                     
+                    const slot = extractCampaignSlot(campName).toLowerCase();
+                    detectedSlots.add(slot);
+                    
                     dailyGroups[dateStr].campaigns.push({
                         campName: campName,
-                        spamVal: spamVal
+                        spamVal: spamVal,
+                        slot: slot
                     });
+                });
+                
+                // Lista ordenada de slots de horário detectados para consistência total das colunas
+                const sortedSlots = Array.from(detectedSlots).sort((a, b) => {
+                    const numA = parseInt(a.replace(/\D/g, '')) || 0;
+                    const numB = parseInt(b.replace(/\D/g, '')) || 0;
+                    return numA - numB;
                 });
                 
                 // Mapeia os grupos diários para o formato final com colunas pivotadas (H1, H9, etc.)
@@ -1223,16 +1248,14 @@
                         ge03: group.ge03.toString()
                     };
                     
-                    // Inicializa os horários vazios padrão do grid
-                    const slots = ['h1', 'h9', 'h12', 'h14', 'h15', 'h16', 'h18', 'h19', 'h21'];
-                    slots.forEach(slot => {
+                    // Inicializa TODOS os slots de horários dinamicamente detectados
+                    sortedSlots.forEach(slot => {
                         mappedRow[slot] = '—';
                     });
                     
                     // Preenche as colunas com base nas campanhas do dia
                     group.campaigns.forEach(camp => {
-                        const slot = extractCampaignSlot(camp.campName).toLowerCase(); // ex: "h18"
-                        mappedRow[slot] = camp.spamVal;
+                        mappedRow[camp.slot] = camp.spamVal;
                     });
                     
                     return mappedRow;
@@ -1384,7 +1407,7 @@
                 }
 
                 const filteredParsed = { headers: parsed.headers, data: filteredData };
-                const mappedData = mapCSVToTable(filteredParsed);
+                const mappedData = mapCSVToTable(filteredParsed); // CORREGIDO: Removido o erro de autorreferência que gerava ReferenceError!
                 
                 proj.detalhesTabela = mappedData;
                 recalculateMetricsFromTable(proj);
@@ -1579,7 +1602,7 @@
                     const agora = new Date();
                     document.getElementById('dashUpdateTime').innerText = agora.toLocaleDateString('pt-BR') + ", " + agora.toLocaleTimeString('pt-BR');
                 }
-                showToast("Métricas atualizadas!");
+                showToast("Métricas updated!");
             }, 1200);
         }
 
