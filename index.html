@@ -25,7 +25,6 @@
         }
         .header-title h1 { font-size: 22px; font-weight: 700; }
         .header-title p { font-size: 11px; color: #94A3B8; margin-top: 3px; }
-        .header-actions { display: flex; gap: 12px; align-items: center; }
         .badge-selo { background: var(--teal); color: white; padding: 6px 16px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
         .btn-header { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px 16px; border-radius: 8px; font-size: 11px; cursor: pointer; font-weight: 600; }
 
@@ -68,13 +67,13 @@
 </head>
 <body>
 
-<div id="loader"><div class="spinner"></div>SINCRONIZANDO...</div>
+<div id="loader"><div class="spinner"></div>SINCRONIZANDO COM A NOVA PLANILHA...</div>
 
 <div class="container">
     <header>
         <div class="header-title">
             <h1 id="h-title">Geral / Projeto 404</h1>
-            <p id="h-update">Métricas Consolidadas de Performance Operacional e Entregabilidade</p>
+            <p id="h-update">Métricas de Performance Operacional e Entregabilidade</p>
         </div>
         <div class="header-actions">
             <div class="badge-selo">Selo: SEM Aquisição</div>
@@ -87,12 +86,12 @@
         <div class="unit-card c404 active" id="card-404" onclick="setProj('404')">
             <h2>Geral / Projeto 404</h2>
             <p id="cnt-404">Calculando disparos...</p>
-            <div class="pill-status" id="pill-404">SAUDÁVEL (0.000%)</div>
+            <div class="pill-status" id="pill-404">CARREGANDO...</div>
         </div>
         <div class="unit-card c2513" id="card-2513" onclick="setProj('2513')">
             <h2>Projeto 2513 (MX02-Ep10)</h2>
             <p id="cnt-2513">Calculando disparos...</p>
-            <div class="pill-status" id="pill-2513">CRÍTICO (0.000%)</div>
+            <div class="pill-status" id="pill-2513">CARREGANDO...</div>
         </div>
     </div>
 
@@ -108,7 +107,7 @@
         <div style="font-size: 24px;">💡</div>
         <div class="insight-content">
             <h4 id="in-title">AUDITORIA DE ENTREGABILIDADE</h4>
-            <p id="in-desc">Processando análise estratégica baseada nos dados postmaster...</p>
+            <p id="in-desc">Processando dados da nova planilha...</p>
         </div>
     </div>
 
@@ -122,7 +121,7 @@
             <div class="table-area">
                 <table id="mainTable">
                     <thead>
-                        <tr><th>DATA</th><th>IDENTIFICADOR</th><th>SPAM %</th><th>DIRECIONAMENTO TÁTICO</th></tr>
+                        <tr><th>DATA</th><th>IDENTIFICADOR</th><th>SPAM %</th><th>STATUS</th></tr>
                     </thead>
                     <tbody></tbody>
                 </table>
@@ -132,8 +131,9 @@
 </div>
 
 <script>
-    const ssId = '19U2EG7NwZgeetyTz_rwQPWg3DuEBJVnFBVylQQkPVVE';
-    const gid = '1778717911';
+    // CONFIGURAÇÃO DA NOVA URL QUE VOCÊ PASSOU
+    const ssId = '1Qad4P2nADyNtaYC1gegxFrHjzgUwanGisQ3Sv7AYbOE';
+    const gid = '372389848';
     
     let masterData = [];
     let currentProj = "404";
@@ -149,19 +149,20 @@
 
     function handleResponse(response) {
         if (response.isError()) {
-            document.getElementById('loader').innerText = "ERRO: Planilha não acessível.";
+            document.getElementById('loader').innerHTML = `<div style="color:red; text-align:center;"><h3>ERRO DE SINCRONIZAÇÃO</h3><p>Verifique se a nova planilha está compartilhada como "Qualquer pessoa com o link pode ler".</p></div>`;
             return;
         }
         const dt = response.getDataTable();
         const rows = dt.getNumberOfRows();
         masterData = [];
         for (let i = 0; i < rows; i++) {
-            let spam = dt.getValue(i, 2);
-            if (spam > 0 && spam < 0.05) spam *= 100;
+            let spamVal = dt.getValue(i, 2);
+            if (spamVal > 0 && spamVal < 0.05) spamVal *= 100;
+
             masterData.push({
                 data: dt.getFormattedValue(i, 0),
                 camp: dt.getValue(i, 1),
-                spam: parseFloat(spam) || 0
+                spam: parseFloat(spamVal) || 0
             });
         }
         document.getElementById('loader').style.display = 'none';
@@ -193,11 +194,28 @@
 
         document.getElementById('in-title').innerText = `AUDITORIA: PROJETO ${currentProj}`;
         document.getElementById('in-desc').innerText = avgActive < 0.3 
-            ? `O Projeto ${currentProj} opera em nível SAUDÁVEL (${avgActive.toFixed(3)}%). A reputação no Postmaster está estável.`
-            : `ALERTA! O Projeto ${currentProj} atingiu nível CRÍTICO (${avgActive.toFixed(3)}%). Risco iminente de queda na Inbox.`;
+            ? `O Projeto ${currentProj} opera em nível SAUDÁVEL (${avgActive.toFixed(3)}%). As reclamações no Postmaster estão baixas.`
+            : `Alerta! O Projeto ${currentProj} atingiu nível CRÍTICO (${avgActive.toFixed(3)}%). Risco iminente de queda na entregabilidade.`;
 
         const tbody = document.querySelector('#mainTable tbody');
         tbody.innerHTML = active.slice().reverse().slice(0, 40).map(d => {
             let st = "Aprovado", bg = "#DCFCE7", cl = "#166534";
             if(d.spam >= 0.1) { st = "Otimizar"; bg = "#FEF9C3"; cl = "#854D0E"; }
-            if(d.spam >= 0
+            if(d.spam >= 0.3) { st = "Remover"; bg = "#FEE2E2"; cl = "#991B1B"; }
+            return `<tr><td>${d.data}</td><td style="color:var(--teal); font-weight:700">${d.camp}</td><td style="font-weight:800">${d.spam.toFixed(2)}%</td><td><span class="st-badge" style="background:${bg}; color:${cl}">${st}</span></td></tr>`;
+        }).join('');
+
+        const chartD = active.slice(-12);
+        if(chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(document.getElementById('mainChart'), {
+            type: 'line',
+            data: {
+                labels: chartD.map(d => d.data),
+                datasets: [{ label: 'Spam %', data: chartD.map(d => d.spam), borderColor: '#028090', backgroundColor: 'rgba(2, 128, 144, 0.05)', fill: true, tension: 0.4, pointRadius: 5, pointBackgroundColor: '#028090' }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: v => v+'%' } } } }
+        });
+    }
+</script>
+</body>
+</html>
