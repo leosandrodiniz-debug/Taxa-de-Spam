@@ -320,19 +320,68 @@
 
     <!-- ================= SISTEMA DE DADOS E DINÂMICA (JAVASCRIPT) ================= -->
     <script>
-        // Função auxiliar para analisar datas no formato DD-MM ou DD/MM de forma robusta
+        // Invólucros de acesso seguro ao localStorage para evitar erros em iframes sandbox
+        function getStorage(key) {
+            try {
+                return localStorage.getItem(key);
+            } catch (e) {
+                return null;
+            }
+        }
+        function setStorage(key, value) {
+            try {
+                localStorage.setItem(key, value);
+            } catch (e) {}
+        }
+        function removeStorage(key) {
+            try {
+                localStorage.removeItem(key);
+            } catch (e) {}
+        }
+
+        // Função para converter e limpar valores inteiros de envios
+        function cleanInt(val) {
+            if (!val) return 0;
+            // Remove espaços, pontos e vírgulas que atuam como divisores de milhar
+            const cleaned = String(val).replace(/[\s\.\,]/g, '').trim();
+            return parseInt(cleaned, 10) || 0;
+        }
+
+        // Função de normalização para ler floats de spam (ex: "0,51%" -> 0.51)
+        function cleanSpamValue(val) {
+            if (val === undefined || val === null || val === '—' || val === '-' || String(val).trim() === '') {
+                return null;
+            }
+            const clean = String(val).replace(',', '.').replace('%', '').trim();
+            const parsed = parseFloat(clean);
+            return isNaN(parsed) ? null : parsed;
+        }
+
+        // Função auxiliar para analisar datas no formato DD-MM, DD/MM, YYYY-MM-DD de forma flexível e robusta
         function parseDateDM(str) {
             if (!str) return new Date(0);
-            // Remove quaisquer letras ou parênteses adicionais para limpar nomes de dias ex: "01-06 (seg.)" -> "01-06"
-            const cleanStr = String(str).replace(/[()a-zA-Záéíóuàèìòùäëïöüâêîôûñç.\s]/g, '').trim();
-            const parts = cleanStr.split(/[-/]/);
+            let s = String(str).trim();
+            
+            // Caso seja formato YYYY-MM-DD padrão
+            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+                return new Date(s + "T12:00:00");
+            }
+            
+            // Remove parênteses adicionais e dias da semana (ex: "(seg.)")
+            s = s.replace(/\s*\(.*?\)\s*/g, '');
+            s = s.replace(/[a-zA-Záéíóuàèìòùäëïöüâêîôûñç.]/gi, '').trim();
+            
+            const parts = s.split(/[-/]/);
             if (parts.length >= 2) {
                 const day = parseInt(parts[0], 10);
                 const month = parseInt(parts[1], 10) - 1; // Base indexada em 0 no JS
-                let year = 2026; // Ano padrão do projeto
-                if (parts.length >= 3 && parts[2].length === 4) {
-                    year = parseInt(parts[2], 10);
+                let year = 2026; // Ano base do projeto
+                if (parts.length >= 3) {
+                    let y = parseInt(parts[2], 10);
+                    if (y < 100) y += 2000;
+                    year = y;
                 }
+                if (isNaN(day) || isNaN(month)) return new Date(0);
                 return new Date(year, month, day);
             }
             return new Date(0);
@@ -465,13 +514,13 @@
             
             // Tenta sincronizar silenciosamente as planilhas associadas em segundo plano ao abrir o app
             for (let proj of projectsData) {
-                const savedUrl = localStorage.getItem(`gspread_url_${proj.id}`);
+                const savedUrl = getStorage(`gspread_url_${proj.id}`);
                 const urlToSync = savedUrl || proj.defaultSheetUrl;
                 if (urlToSync) {
                     const success = await silentSyncGoogleSheets(urlToSync, proj.id);
                     if (success) {
                         console.log(`Projeto ${proj.id} sincronizado com sucesso na inicialização.`);
-                        if (proj.id === 404) {
+                        if (proj.id === selectedProject?.id || proj.id === 404) {
                             document.getElementById('syncIndicator').classList.remove('hidden');
                         }
                     }
@@ -482,19 +531,12 @@
         // Sincronização em segundo plano sem notificações intrusivas (toasts) na inicialização
         async function silentSyncGoogleSheets(url, projectId) {
             try {
-                let csvUrl = url;
-                if (url.includes("docs.google.com/spreadsheets") && !url.includes("pub?")) {
-                    const matches = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-                    if (matches && matches[1]) {
-                        csvUrl = `https://docs.google.com/spreadsheets/d/${matches[1]}/export?format=csv`;
-                        const gidMatch = url.match(/[#&?]gid=([0-9]+)/);
-                        if (gidMatch && gidMatch[1]) {
-                            csvUrl += `&gid=${gidMatch[1]}`;
-                        }
-                    }
-                }
-
-                const response = await fetch(csvUrl);
+                let csvUrl = getCleanCsvUrl(url);
+                
+                // Bust de cache estratégico para pular o CDN do Google Drive
+                const cacheBuster = csvUrl.includes('?') ? `&_cb=${Date.now()}` : `?_cb=${Date.now()}`;
+                
+                const response = await fetch(csvUrl + cacheBuster);
                 if (!response.ok) return false;
 
                 const csvText = await response.text();
@@ -594,7 +636,7 @@
             badge.className = "text-xs font-black px-4 py-2 rounded-full border tracking-wider " + getBadgeColorClass(proj.statusGeral);
 
             // Carregar dados salvos do localStorage se houver vinculação ativa ou default
-            const savedUrl = localStorage.getItem(`gspread_url_${proj.id}`);
+            const savedUrl = getStorage(`gspread_url_${proj.id}`);
             const activeUrl = savedUrl || proj.defaultSheetUrl;
             if (activeUrl) {
                 document.getElementById('sheetUrlInput').value = activeUrl;
@@ -691,9 +733,8 @@
         // Classificação de cor para percentuais de spam baseados nas novas categorias (compatível com decimal de vírgula)
         function getSpamColorClass(val) {
             if (!val || val === "—") return "text-slate-400 font-normal";
-            const cleanVal = String(val).replace(',', '.').replace('%', '').trim();
-            const num = parseFloat(cleanVal);
-            if (isNaN(num)) return "text-slate-400 font-normal";
+            const num = cleanSpamValue(val);
+            if (num === null) return "text-slate-400 font-normal";
             
             if (num < 0.10) {
                 return "text-[#00b489]"; 
@@ -739,11 +780,7 @@
                 const hasData = sortedHistory.some(h => h[key] && h[key] !== '—');
                 if (hasData) {
                     const dataPoints = sortedHistory.map(h => {
-                        const val = h[key];
-                        if (val && val !== '—') {
-                            return parseFloat(String(val).replace(',', '.').replace('%', '').trim());
-                        }
-                        return null;
+                        return cleanSpamValue(h[key]);
                     });
                     
                     datasets.push({
@@ -815,8 +852,7 @@
             if (dailyVolumeChartInstance) { dailyVolumeChartInstance.destroy(); }
 
             const dailyData = sortedHistory.map(h => {
-                const cleanEnvios = String(h.envios).replace(/\./g, '').replace(/,/g, '').trim();
-                return parseInt(cleanEnvios) || 0;
+                return cleanInt(h.envios);
             });
 
             dailyVolumeChartInstance = new Chart(ctxDaily, {
@@ -859,13 +895,10 @@
                 let count = 0;
                 campaignKeys.forEach(k => {
                     const val = h[k];
-                    if (val && val !== '—') {
-                        const cleanVal = String(val).replace(',', '.').replace('%', '').trim();
-                        const numericVal = parseFloat(cleanVal);
-                        if (!isNaN(numericVal)) {
-                            sum += numericVal;
-                            count++;
-                        }
+                    const numericVal = cleanSpamValue(val);
+                    if (numericVal !== null) {
+                        sum += numericVal;
+                        count++;
                     }
                 });
                 return count > 0 ? parseFloat((sum / count).toFixed(3)) : 0;
@@ -927,13 +960,10 @@
                 let count = 0;
                 proj.detalhesTabela.forEach(row => {
                     const cellVal = row[key];
-                    if (cellVal && cellVal !== '—') {
-                        const cleanVal = String(cellVal).replace(',', '.').replace('%', '').trim();
-                        const numericVal = parseFloat(cleanVal);
-                        if (!isNaN(numericVal)) {
-                            sum += numericVal;
-                            count++;
-                        }
+                    const numericVal = cleanSpamValue(cellVal);
+                    if (numericVal !== null) {
+                        sum += numericVal;
+                        count++;
                     }
                 });
                 return count > 0 ? parseFloat((sum / count).toFixed(3)) : 0;
@@ -975,8 +1005,11 @@
             });
         }
 
-        // Motor de Parsing para CSVs com autodeteção robusta de separador (Vírgula vs Ponto e Vírgula)
+        // Motor de Parsing para CSVs com autodeteção robusta de separador e limpeza de BOM
         function parseCSV(text) {
+            // Remove o Byte Order Mark (BOM) se ele existir na resposta do Google Sheets
+            text = text.replace(/^\uFEFF/, "");
+            
             // Analisa a primeira linha para autodetectar o separador regional correcto
             const firstLine = text.split('\n')[0] || '';
             const commaCount = (firstLine.match(/,/g) || []).length;
@@ -1006,7 +1039,8 @@
             if (row.length > 1 || row[0] !== "") { lines.push(row); }
             if (lines.length === 0) return { headers: [], data: [] };
 
-            const headers = lines[0].map(h => h.trim().toLowerCase());
+            // Limpa aspas e BOM remanescentes nos cabeçalhos
+            const headers = lines[0].map(h => h.trim().toLowerCase().replace(/['"']/g, ''));
             const data = [];
 
             for (let i = 1; i < lines.length; i++) {
@@ -1024,17 +1058,14 @@
             return { headers, data };
         }
 
-        // Mapeia os dados brutos do Google Sheets estruturados dinamicamente
+        // Mapeia os dados brutos do Google Sheets estruturados dinamicamente de forma segura
         function mapCSVToTable(parsed) {
             const { headers, data } = parsed;
             
-            const findKey = (possibleNames) => {
-                return headers.find(h => possibleNames.includes(h.toLowerCase().trim()));
-            };
-
-            const dataKey = findKey(['data', 'date', 'dia', 'período']);
-            const enviosKey = findKey(['envios', 'volume', 'sent', 'quantidade']);
-            const ge03Key = findKey(['≥ 0,3', '>=0,3', '>=0.3', 'ge0.3', 'ge03', '>= 0.3', '>= 0,3']);
+            // Localiza de forma flexível as colunas essenciais
+            const dataKey = headers.find(h => h.includes('data') || h.includes('date') || h.includes('dia') || h.includes('periodo')) || headers[0];
+            const enviosKey = headers.find(h => h.includes('envio') || h.includes('vol') || h.includes('sent') || h.includes('quant')) || headers[1];
+            const ge03Key = headers.find(h => h.includes('0,3') || h.includes('0.3') || h.includes('ge03') || h.includes('>=') || h.includes('≥')) || headers[2];
             
             return data.map(row => {
                 const mappedRow = {
@@ -1043,7 +1074,7 @@
                     ge03: row[ge03Key] || '0'
                 };
                 
-                // Copia automaticamente qualquer outra coluna presente na planilha (H1, H9, CTR, etc.)
+                // Copia dinamicamente qualquer outra coluna presente (H1, H9, etc.)
                 Object.keys(row).forEach(key => {
                     const normalizedKey = key.trim().toLowerCase();
                     if (normalizedKey !== dataKey && normalizedKey !== enviosKey && normalizedKey !== ge03Key) {
@@ -1065,20 +1096,17 @@
             let spamCount = 0;
 
             table.forEach(row => {
-                const env = parseInt(String(row.envios).replace(/\./g, '').replace(/,/g, '').trim()) || 0;
+                const env = cleanInt(row.envios);
                 totalEnvios += env;
 
                 const campaignKeys = Object.keys(row).filter(k => k !== 'data' && k !== 'envios' && k !== 'ge03');
                 campaignKeys.forEach(k => {
                     const val = row[k];
-                    if (val && val !== '—') {
-                        const cleanVal = String(val).replace(',', '.').replace('%', '').trim();
-                        const numericVal = parseFloat(cleanVal);
-                        if (!isNaN(numericVal)) {
-                            totalSpamSum += numericVal;
-                            spamCount++;
-                            if (numericVal >= 0.30) { campaignsGe03++; }
-                        }
+                    const numericVal = cleanSpamValue(val);
+                    if (numericVal !== null) {
+                        totalSpamSum += numericVal;
+                        spamCount++;
+                        if (numericVal >= 0.30) { campaignsGe03++; }
                     }
                 });
             });
@@ -1121,26 +1149,33 @@
             renderProjectsGrid();
         }
 
+        // Função de reescrita inteligente de URL para garantir formato CSV exportado do sheets
+        function getCleanCsvUrl(url) {
+            let csvUrl = url;
+            if (url.includes("docs.google.com/spreadsheets") && !url.includes("output=csv") && !url.includes("format=csv")) {
+                const matches = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                if (matches && matches[1]) {
+                    csvUrl = `https://docs.google.com/spreadsheets/d/${matches[1]}/export?format=csv`;
+                    const gidMatch = url.match(/[#&?]gid=([0-9]+)/);
+                    if (gidMatch && gidMatch[1]) {
+                        csvUrl += `&gid=${gidMatch[1]}`;
+                    }
+                }
+            }
+            return csvUrl;
+        }
+
         // Sincroniza dinamicamente usando a API de Fetch de CSVs e mantendo o identificador de aba (gid)
         async function syncGoogleSheets(url, projectId) {
             try {
-                let csvUrl = url;
-                if (url.includes("docs.google.com/spreadsheets") && !url.includes("pub?")) {
-                    const matches = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-                    if (matches && matches[1]) {
-                        csvUrl = `https://docs.google.com/spreadsheets/d/${matches[1]}/export?format=csv`;
-                        
-                        // Extrai dinamicamente o GID se ele existir na URL original para sincronizar a aba correta
-                        const gidMatch = url.match(/[#&?]gid=([0-9]+)/);
-                        if (gidMatch && gidMatch[1]) {
-                            csvUrl += `&gid=${gidMatch[1]}`;
-                        }
-                    }
-                }
+                let csvUrl = getCleanCsvUrl(url);
+                
+                // Bust de cache forçando requisições limpas da CDN do Google
+                const cacheBuster = csvUrl.includes('?') ? `&_cb=${Date.now()}` : `?_cb=${Date.now()}`;
 
                 showToast("Buscando dados no Google Sheets...");
 
-                const response = await fetch(csvUrl);
+                const response = await fetch(csvUrl + cacheBuster);
                 if (!response.ok) throw new Error("Erro ao carregar link.");
 
                 const csvText = await response.text();
@@ -1166,7 +1201,7 @@
                     buildHistoricalChart(proj);
                     buildComplementaryCharts(proj);
                     
-                    localStorage.setItem(`gspread_url_${projectId}`, url);
+                    setStorage(`gspread_url_${projectId}`, url);
                     document.getElementById('syncIndicator').classList.remove('hidden');
                     
                     showToast("Planilha sincronizada com sucesso!");
@@ -1186,8 +1221,9 @@
             const input = document.getElementById('sheetUrlInput');
             
             // Define por padrão a URL de exportação direta fornecida por você
-            if (!input.value.trim() && selectedProject && selectedProject.id === 404) {
-                input.value = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSePugXgmjZTIO3_a46XJCGpjDHSSSCzUDR-Jk9OkPMafPffOIVr-M23se--EiwGrr6XE08nWMnIUwf/pub?gid=372389848&single=true&output=csv";
+            if (!input.value.trim() && selectedProject) {
+                const savedUrl = getStorage(`gspread_url_${selectedProject.id}`);
+                input.value = savedUrl || selectedProject.defaultSheetUrl || "";
             }
             
             modal.classList.remove('opacity-0', 'pointer-events-none');
@@ -1215,7 +1251,7 @@
 
         function clearSyncUrl() {
             if (selectedProject) {
-                localStorage.removeItem(`gspread_url_${selectedProject.id}`);
+                removeStorage(`gspread_url_${selectedProject.id}`);
                 document.getElementById('sheetUrlInput').value = "";
                 document.getElementById('syncIndicator').classList.add('hidden');
                 showToast("Vínculo removido. Restaurando padrão local...");
@@ -1322,7 +1358,7 @@
             setTimeout(() => {
                 icon.classList.remove('fa-spin');
                 if (selectedProject) {
-                    const savedUrl = localStorage.getItem(`gspread_url_${selectedProject.id}`);
+                    const savedUrl = getStorage(`gspread_url_${selectedProject.id}`);
                     const urlToSync = savedUrl || selectedProject.defaultSheetUrl;
                     if (urlToSync) {
                         syncGoogleSheets(urlToSync, selectedProject.id);
