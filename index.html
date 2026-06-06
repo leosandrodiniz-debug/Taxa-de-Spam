@@ -17,7 +17,6 @@
         body { background-color: var(--bg); color: var(--text); padding: 24px; line-height: 1.4; }
         .container { max-width: 1400px; margin: 0 auto; }
 
-        /* HEADER */
         header {
             background-color: var(--navy); color: white; padding: 14px 28px; border-radius: 12px;
             display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;
@@ -29,7 +28,6 @@
         .badge-selo { background: #0D9488; color: white; padding: 6px 14px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
         .btn-top { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: white; padding: 7px 14px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; }
 
-        /* CARDS UNIDADES */
         .section-label { font-size: 11px; font-weight: 800; color: #475569; margin: 24px 0 12px 0; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
         .grid-units { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .unit-card { background: white; border-radius: 12px; padding: 22px; border: 1px solid var(--border); cursor: pointer; position: relative; transition: all 0.2s; }
@@ -39,36 +37,30 @@
         .unit-card p { font-size: 10px; color: var(--muted); margin-top: 4px; }
         .pill-status { position: absolute; top: 22px; right: 22px; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
 
-        /* DATE PRESETS */
         .date-bar { display: flex; justify-content: flex-end; gap: 8px; margin: 20px 0; }
         .f-btn { background: white; border: 1px solid var(--border); padding: 8px 18px; border-radius: 20px; font-size: 11.5px; color: var(--muted); cursor: pointer; font-weight: 500; }
         .f-btn.active { background: #EEF2FF; color: #4F46E5; border: 1px solid #C7D2FE; font-weight: 700; }
 
-        /* INSIGHT BOX */
         .insight { background: #FFFDF5; border: 1px solid #FEF3C7; border-left: 5px solid var(--yellow); padding: 20px; border-radius: 12px; margin-bottom: 24px; display: flex; gap: 15px; }
         .insight-icon { font-size: 20px; }
         .insight h4 { font-size: 12px; text-transform: uppercase; margin-bottom: 4px; color: #1e293b; font-weight: 700; }
         .insight p { font-size: 11px; color: #475569; line-height: 1.6; }
 
-        /* DASHBOARD CONTENT */
         .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .card-white { background: white; border-radius: 12px; border: 1px solid var(--border); padding: 24px; }
         .card-title { font-size: 11px; font-weight: 800; color: var(--navy); text-transform: uppercase; margin-bottom: 20px; }
 
-        /* TABLE TABS */
         .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
         .tabs { display: flex; gap: 5px; }
         .tab { padding: 6px 12px; border-radius: 15px; font-size: 10px; font-weight: 800; border: none; cursor: pointer; background: #F1F5F9; color: #64748B; transition: 0.2s; }
         .tab.active { background: var(--navy); color: white; }
 
-        /* TABLE */
         .table-wrap { max-height: 400px; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
         th { text-align: left; padding: 12px; background: #F8FAFC; position: sticky; top: 0; font-weight: 700; color: var(--muted); border-bottom: 1px solid var(--border); font-size: 10px; text-transform: uppercase; }
         td { padding: 12px; border-bottom: 1px solid var(--border); color: #334155; }
         .st-badge { padding: 4px 8px; border-radius: 4px; font-weight: 800; font-size: 10px; text-transform: uppercase; }
 
-        /* FOOTER LEGEND */
         footer { margin-top: 32px; padding: 15px; display: flex; justify-content: center; gap: 20px; background: var(--navy); border-radius: 12px; color: white; font-size: 10px; font-weight: 700; }
         .leg-item { display: flex; align-items: center; gap: 6px; }
         .dot { width: 8px; height: 8px; border-radius: 50%; }
@@ -110,13 +102,13 @@
     </div>
 
     <div class="date-bar">
-        <button class="f-btn">Hoje</button>
-        <button class="f-btn">Ontem</button>
-        <button class="f-btn active">Últimos 7 dias</button>
-        <button class="f-btn">Últimos 30 dias</button>
-        <button class="f-btn">Últimos 90 dias</button>
-        <button class="f-btn">Mês até hoje</button>
-        <button class="f-btn">Todo o histórico</button>
+        <button class="f-btn" onclick="applyDateFilter('today', this)">Hoje</button>
+        <button class="f-btn" onclick="applyDateFilter('yesterday', this)">Ontem</button>
+        <button class="f-btn active" onclick="applyDateFilter('7days', this)">Últimos 7 dias</button>
+        <button class="f-btn" onclick="applyDateFilter('30days', this)">Últimos 30 dias</button>
+        <button class="f-btn" onclick="applyDateFilter('90days', this)">Últimos 90 dias</button>
+        <button class="f-btn" onclick="applyDateFilter('month', this)">Mês até hoje</button>
+        <button class="f-btn" onclick="applyDateFilter('all', this)">Todo o histórico</button>
     </div>
 
     <div class="section-label">🛡️ FILTROS DE REPUTAÇÃO POSTMASTER & CAMPANHAS GRANULARES</div>
@@ -162,11 +154,11 @@
 </div>
 
 <script>
-    // Configurações da Nova Planilha
     const ssId = '1_zrTPZ9tehp5YmSrBXAehqwhsc5i9JOQnP3tNUdsS2o';
-    const gid = '599913369';
+    const gid = '372389848'; // GID corrigido para a aba correta
     
     let masterData = [];
+    let filteredDataByDate = [];
     let currentProj = "404";
     let activeFilter = "all";
     let chartObj = null;
@@ -187,17 +179,52 @@
         const dt = response.getDataTable();
         masterData = [];
         for (let i = 0; i < dt.getNumberOfRows(); i++) {
+            const dateStr = dt.getFormattedValue(i, 0);
+            const p = dateStr.split('/');
+            const dateObj = new Date(p[2], p[1] - 1, p[0]);
+            
             let s = dt.getValue(i, 2);
-            // Ajuste para ler porcentagem caso venha como decimal (0.01 vira 1%)
             if (s > 0 && s < 0.05) s *= 100;
+            
             masterData.push({
-                data: dt.getFormattedValue(i, 0),
-                camp: dt.getValue(i, 1),
+                dataLabel: dateStr,
+                dataObj: dateObj,
+                camp: String(dt.getValue(i, 1)),
                 spam: parseFloat(s) || 0
             });
         }
         document.getElementById('loader').style.display = 'none';
         document.getElementById('time-now').innerText = new Date().toLocaleString();
+        
+        // Aplica filtro inicial de "Tudo" para garantir que os dados apareçam
+        applyDateFilter('all', document.querySelector('button[onclick*="all"]'));
+    }
+
+    function applyDateFilter(period, btn) {
+        document.querySelectorAll('.f-btn').forEach(b => b.classList.remove('active'));
+        if(btn) btn.classList.add('active');
+
+        const now = new Date();
+        now.setHours(23, 59, 59, 999);
+        let start = new Date();
+        start.setHours(0, 0, 0, 0);
+
+        if (period === 'yesterday') {
+            start.setDate(now.getDate() - 1);
+            now.setDate(now.getDate() - 1);
+        } else if (period === '7days') {
+            start.setDate(now.getDate() - 7);
+        } else if (period === '30days') {
+            start.setDate(now.getDate() - 30);
+        } else if (period === '90days') {
+            start.setDate(now.getDate() - 90);
+        } else if (period === 'month') {
+            start = new Date(now.getFullYear(), now.getMonth(), 1);
+        } else if (period === 'all') {
+            start = new Date(2000, 0, 1);
+        }
+
+        filteredDataByDate = masterData.filter(d => d.dataObj >= start && d.dataObj <= now);
         render();
     }
 
@@ -212,16 +239,16 @@
     function setFilter(f) {
         activeFilter = f;
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        event.target.classList.add('active');
+        event.currentTarget.classList.add('active');
         render();
     }
 
     function render() {
-        // Atualiza Cards Laterais
+        // Atualiza Cards das Unidades com base no filtro de data atual
         ["404", "2513"].forEach(id => {
-            const f = masterData.filter(d => String(d.camp).includes(id));
-            const avg = f.length ? f.reduce((a,b)=>a+b.spam, 0)/f.length : 0;
-            document.getElementById('count-'+id).innerText = `${f.length.toLocaleString()} disparos auditados no total`;
+            const list = filteredDataByDate.filter(d => d.camp.includes(id));
+            const avg = list.length ? list.reduce((a,b)=>a+b.spam, 0)/list.length : 0;
+            document.getElementById('count-'+id).innerText = `${list.length} disparos auditados no período`;
             const p = document.getElementById('pill-'+id);
             const isB = avg < 0.3;
             p.innerText = `${isB ? 'SAUDÁVEL':'CRÍTICO'} (${avg.toFixed(3)}%)`;
@@ -229,46 +256,42 @@
             p.style.color = isB ? "var(--mint)" : "var(--red)";
         });
 
-        const active = masterData.filter(d => String(d.camp).includes(currentProj));
+        const activeByProj = filteredDataByDate.filter(d => d.camp.includes(currentProj));
         
-        // Texto de Insight Dinâmico
         document.getElementById('in-title').innerText = `AUDITORIA DE ENTREGABILIDADE: PROJETO ${currentProj}`;
-        document.getElementById('in-desc').innerText = `O Projeto ${currentProj} mantém-se em patamar operacional conforme os dados coletados na nova planilha. A blindagem dos blocos de IPs e o rodízio de remetentes via Everinbox surtiram excelente efeito técnico.`;
+        document.getElementById('in-desc').innerText = `O Projeto ${currentProj} mantém-se em patamar operacional conforme os dados filtrados. A blindagem técnica continua ativa.`;
 
-        // Contadores das Abas
-        document.getElementById('cnt-all').innerText = active.length;
-        document.getElementById('cnt-ap').innerText = active.filter(d => d.spam < 0.1).length;
-        document.getElementById('cnt-ot').innerText = active.filter(d => d.spam >= 0.1 && d.spam < 0.3).length;
-        document.getElementById('cnt-rm').innerText = active.filter(d => d.spam >= 0.3).length;
+        document.getElementById('cnt-all').innerText = activeByProj.length;
+        document.getElementById('cnt-ap').innerText = activeByProj.filter(d => d.spam < 0.1).length;
+        document.getElementById('cnt-ot').innerText = activeByProj.filter(d => d.spam >= 0.1 && d.spam < 0.3).length;
+        document.getElementById('cnt-rm').innerText = activeByProj.filter(d => d.spam >= 0.3).length;
 
-        // Lógica de Filtro da Tabela
-        let filtered = active;
-        if (activeFilter === 'ap') filtered = active.filter(d => d.spam < 0.1);
-        if (activeFilter === 'ot') filtered = active.filter(d => d.spam >= 0.1 && d.spam < 0.3);
-        if (activeFilter === 'rm') filtered = active.filter(d => d.spam >= 0.3);
+        let finalTableData = activeByProj;
+        if (activeFilter === 'ap') finalTableData = activeByProj.filter(d => d.spam < 0.1);
+        if (activeFilter === 'ot') finalTableData = activeByProj.filter(d => d.spam >= 0.1 && d.spam < 0.3);
+        if (activeFilter === 'rm') finalTableData = activeByProj.filter(d => d.spam >= 0.3);
 
         const tbody = document.querySelector('#mainTable tbody');
-        tbody.innerHTML = filtered.slice().reverse().slice(0, 40).map(d => {
+        tbody.innerHTML = finalTableData.slice().reverse().map(d => {
             let st = "Aprovado", bg = "#DCFCE7", cl = "#166534";
             if(d.spam >= 0.1) { st = "Otimizar"; bg = "#FEF9C3"; cl = "#854D0E"; }
             if(d.spam >= 0.3) { st = "Remover"; bg = "#FEE2E2"; cl = "#991B1B"; }
-            return `<tr><td>${d.data}</td><td style="color:var(--teal); font-weight:700">${d.camp}</td><td style="font-weight:800">${d.spam.toFixed(2)}%</td><td><span class="st-badge" style="background:${bg}; color:${cl}">${st}</span></td></tr>`;
+            return `<tr><td>${d.dataLabel}</td><td style="color:var(--teal); font-weight:700">${d.camp}</td><td style="font-weight:800">${d.spam.toFixed(2)}%</td><td><span class="st-badge" style="background:${bg}; color:${cl}">${st}</span></td></tr>`;
         }).join('');
 
-        // Gráfico Principal
-        const chartD = active.slice(-12);
         if(chartObj) chartObj.destroy();
-        chartObj = new Chart(document.getElementById('mainChart'), {
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        chartObj = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: chartD.map(d => d.data),
+                labels: activeByProj.map(d => d.dataLabel),
                 datasets: [{ 
-                    label: 'Spam % Médio Diário', data: chartD.map(d => d.spam), 
+                    label: 'Spam %', data: activeByProj.map(d => d.spam), 
                     borderColor: '#028090', backgroundColor: 'rgba(2, 128, 144, 0.05)', 
-                    fill: true, tension: 0.4, pointRadius: 5, pointBackgroundColor: '#028090' 
+                    fill: true, tension: 0.4, pointRadius: 4 
                 }]
             },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: v => v+'%' } } } }
+            options: { responsive: true, maintainAspectRatio: false }
         });
     }
 </script>
