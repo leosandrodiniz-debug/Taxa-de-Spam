@@ -220,12 +220,16 @@
             </div>
 
             <div class="secao-inspecao-container" id="painel-auditoria-avancada">
-                <div class="section-title" id="txt-titulo-inspecao">🔍 Inspecionar Campanha</div>
+                <div class="section-title" id="txt-titulo-inspecao">🔍 Diagnóstico Avançado de Lote</div>
                 <div class="card-inspecao-bloco">
-                    <h4 style="font-size:12px; font-weight:700; color:var(--navy-dark); text-transform:uppercase; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:6px;">📊 Comparativo de Entregabilidade Temporal</h4>
+                    <h4 style="font-size:12px; font-weight:700; color:var(--navy-dark); text-transform:uppercase; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:6px;">📊 Análise Crítica de Performance Sanitária</h4>
                     <table class="table-project">
                         <thead>
-                            <tr style="background:#F8FAFC;"><th>Período Analítico</th><th>Taxa de Spam %</th><th>Status Operacional</th></tr>
+                            <tr style="background:#F8FAFC;">
+                                <th style="width: 30%;">Métrica Auditada</th>
+                                <th style="width: 25%;">Valor Extraído</th>
+                                <th style="width: 45%;">Direcionamento Operacional Estratégico</th>
+                            </tr>
                         </thead>
                         <tbody id="tabela-inspecao-kpis"></tbody>
                     </table>
@@ -284,7 +288,6 @@
             return match ? match[1] : null;
         }
 
-        // NOVO TRATAMENTO UNIVERSAL DE DATAS (Corrige o sumiço pós dia 01/06)
         function limparEFormatarData(rawDate) {
             if (!rawDate) return null;
             let limpo = rawDate.trim().replace(/-/g, '/');
@@ -292,9 +295,9 @@
             
             if (partes.length >= 2) {
                 let dia, mes;
-                if (partes[0].length === 4) { // Formato YYYY/MM/DD
+                if (partes[0].length === 4) { 
                     dia = partes[2]; mes = partes[1];
-                } else { // Formatos DD/MM/YYYY ou DD/MM
+                } else { 
                     dia = partes[0]; mes = partes[1];
                 }
                 return `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}`;
@@ -559,7 +562,6 @@
 
             let campanhasProjetos = rawList.filter(c => extractProjectId(c.id) === projId);
             
-            // ORDENAÇÃO RIGOROSA CRESCENTE DA TABELA (Mais antigo para o mais recente)
             campanhasProjetos.sort((a,b) => {
                 let ptsA = a.data.split("/"); let ptsB = b.data.split("/");
                 return new Date(2026, parseInt(ptsA[1])-1, parseInt(ptsA[0])) - new Date(2026, parseInt(ptsB[1])-1, parseInt(ptsB[0]));
@@ -595,14 +597,52 @@
             document.getElementById("caixa-insights-postmaster").innerHTML = `<div><strong>💡 AUDITORIA DE ENTREGABELIDADE: PROJETO ${projId}</strong><p style="font-size:12px;">Média sanitária atual do Postmaster em: ${spamMedio.toFixed(3)}%.</p></div>`;
         }
 
+        // RECONSTRUÇÃO DA FUNÇÃO DE INSPEÇÃO: GERA RELATÓRIOS E DIRECIONAMENTOS DINÂMICOS REALÍSTICOS
         function inspecionarCampanhaRow(element, idCampanha, dataCampanha, spamAtual) {
-            document.querySelectorAll(".row-clicavel").forEach(r => r.classList.remove("row-selected")); element.classList.add("row-selected");
-            document.getElementById("txt-titulo-inspecao").innerText = `🔍 Auditoria Avançada de Lote: ${idCampanha}`;
-            document.getElementById("tabela-inspecao-kpis").innerHTML = `<tr><td>Disparo Executado (${dataCampanha})</td><td>${spamAtual.toFixed(2)}%</td><td>Mapeado</td></tr>`;
+            document.querySelectorAll(".row-clicavel").forEach(r => r.classList.remove("row-selected")); 
+            element.classList.add("row-selected");
+            
+            document.getElementById("txt-titulo-inspecao").innerText = `🔍 Diagnóstico Técnico do Lote: ${idCampanha}`;
+            
+            let statusBadge = "";
+            let planoAcao = "";
+            
+            if (spamAtual >= 0.30) {
+                statusBadge = "<span class='badge-status badge-ruim'>🔴 CRÍTICO (REMOVER)</span>";
+                planoAcao = "<strong>MEDIDA DE EMERGÊNCIA:</strong> Pausar imediatamente disparos semelhantes usando este remetente. Taxa acima do limite do Postmaster. Necessário rodar uma higienização rigorosa na lista de leads frios e verificar se o IP caiu em Blacklist antes de reativar.";
+            } else if (spamAtual >= 0.10) {
+                statusBadge = "<span class='badge-status badge-medio'>🟡 ATENÇÃO (OTIMIZAR)</span>";
+                planoAcao = "<strong>AÇÃO CORRETIVA:</strong> Margem de atenção detectada. Reduzir o volume de e-mails enviados por hora (Throttling). Revisar urgentemente a linha de assunto para remover termos comerciais agressivos que acionam filtros de spam mecânicos.";
+            } else {
+                statusBadge = "<span class='badge-status badge-bom'>🟢 EXCELENTE (APROVADO)</span>";
+                planoAcao = "<strong>STATUS NOMINAL:</strong> Performance sanitária exemplar. Reputação do domínio segura. Volume totalmente liberado para escalabilidade de entregas diárias sem restrições técnicas.";
+            }
+            
+            document.getElementById("tabela-inspecao-kpis").innerHTML = `
+                <tr>
+                    <td><strong>ID Identificador Corporativo</strong></td>
+                    <td><code style="color:var(--teal); font-weight:700;">${idCampanha}</code></td>
+                    <td>Lote disparado e catalogado oficialmente no sistema na data de <strong>${dataCampanha}</strong>.</td>
+                </tr>
+                <tr>
+                    <td><strong>Taxa de Reclamação (Spam)</strong></td>
+                    <td style="font-size:14px; font-weight:700; color:var(--navy-dark);">${spamAtual.toFixed(3)}%</td>
+                    <td>Status de Integridade: ${statusBadge}</td>
+                </tr>
+                <tr>
+                    <td><strong>Plano de Ação Estratégico</strong></td>
+                    <td colspan="2" style="background: #F8FAFC; color: var(--text-dark); font-size: 12.5px; padding: 16px; border-left: 4px solid var(--navy-dark);">
+                        ${planoAcao}
+                    </td>
+                </tr>
+            `;
+            
             document.getElementById("painel-auditoria-avancada").style.display = "block";
+            
+            // Auto-rolagem sutil para o painel de inspeção ser visto imediatamente
+            document.getElementById("painel-auditoria-avancada").scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
-        // GRÁFICO INTEIRAMENTE CORRIGIDO COM ORDENAÇÃO CRESCENTE E FILTRAGEM MODERNA
         function renderCharts() {
             const projId = DADOS.activeProjectId;
             
@@ -612,7 +652,6 @@
                 if (temLogDoProjeto) datasDoProjeto.push(k);
             });
 
-            // GARANTE ORDEM CRESCENTE VISUAL NO GRÁFICO (Esquerda -> Direita)
             datasDoProjeto.sort((a,b) => { 
                 let ptsA = a.split("/"); let ptsB = b.split("/"); 
                 return new Date(2026, parseInt(ptsA[1])-1, parseInt(ptsA[0])) - new Date(2026, parseInt(ptsB[1])-1, parseInt(ptsB[0])); 
