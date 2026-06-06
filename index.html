@@ -2,152 +2,189 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Projeto 404 — Solinero MX</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projeto 404 — Solinero MX | Executive War Room</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --navy: #0A2540; --mint: #02C39A; --bg: #F4F6F9; }
-        body { background: var(--bg); font-family: 'Segoe UI', sans-serif; padding: 20px; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        header { background: var(--navy); color: white; padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .btn { background: var(--mint); border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+        :root {
+            --navy-dark: #0A2540; --teal: #028090; --mint: #02C39A;
+            --alert-red: #E63946; --alert-yellow: #F4A261; --bg-light: #F4F6F9;
+            --card-bg: #FFFFFF; --text-dark: #1E293B; --text-muted: #64748B;
+            --border-color: #E2E8F0;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background-color: var(--bg-light); color: var(--text-dark); padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        header {
+            background-color: var(--navy-dark); color: white; padding: 24px; border-radius: 12px;
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .btn-sync {
+            background-color: var(--mint); color: var(--navy-dark); border: none;
+            padding: 12px 24px; border-radius: 30px; font-weight: 700; cursor: pointer;
+            transition: 0.2s; font-size: 13px;
+        }
+        .btn-sync:hover { transform: scale(1.05); background-color: #02b08b; }
+
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+        .card { background: white; border-radius: 12px; padding: 24px; border: 1px solid var(--border-color); box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        h3 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 20px; color: var(--navy-dark); }
+
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th { background: #f8f9fa; padding: 12px; text-align: left; border-bottom: 2px solid #eee; }
-        td { padding: 12px; border-bottom: 1px solid #eee; }
-        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-        .critico { background: #fee2e2; color: #991b1b; }
-        .saudavel { background: #dcfce7; color: #166534; }
+        th { text-align: left; background: #F8FAFC; padding: 12px; color: var(--text-muted); border-bottom: 2px solid var(--border-color); }
+        td { padding: 12px; border-bottom: 1px solid var(--border-color); }
+
+        .badge { padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+        .badge-bom { background: #DCFCE7; color: #166534; }
+        .badge-ruim { background: #FEE2E2; color: #991B1B; }
+
+        #loading-overlay { position: fixed; top: 20px; right: 20px; background: var(--navy-dark); color: white; padding: 10px 20px; border-radius: 8px; font-size: 12px; display: none; }
     </style>
 </head>
 <body>
 
-<header>
-    <div>
-        <h1>Projeto 404 — Geral</h1>
-        <p id="status-text">Aguardando sincronização...</p>
-    </div>
-    <button class="btn" onclick="fetchData()">🔄 Sincronizar Dados</button>
-</header>
+<div id="loading-overlay">Sincronizando dados...</div>
 
-<div class="grid">
-    <div class="card">
-        <h3>Histórico de Spam (%)</h3>
-        <div style="height: 300px;"><canvas id="chartSpam"></canvas></div>
-    </div>
-    <div class="card">
-        <h3>Log de Campanhas</h3>
-        <div style="max-height: 300px; overflow-y: auto;">
-            <table id="dataTable">
-                <thead>
-                    <tr><th>DATA</th><th>CAMPANHA</th><th>SPAM %</th><th>STATUS</th></tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+<div class="container">
+    <header>
+        <div>
+            <h1 style="font-size: 22px;">Projeto 404 — Executive War Room</h1>
+            <p style="font-size: 13px; opacity: 0.7; margin-top: 4px;">Monitoramento de Entregabilidade e Spam Diário</p>
+        </div>
+        <button class="btn-sync" onclick="sincronizar()">🔄 Sincronizar Agora</button>
+    </header>
+
+    <div class="grid">
+        <div class="card">
+            <h3>📈 Histórico de Spam Diário (%)</h3>
+            <div style="height: 300px;"><canvas id="graficoSpam"></canvas></div>
+        </div>
+
+        <div class="card">
+            <h3>📋 Log de Auditoria de Campanhas</h3>
+            <div style="max-height: 350px; overflow-y: auto;">
+                <table id="tabelaDados">
+                    <thead>
+                        <tr>
+                            <th>DATA</th>
+                            <th>CAMPANHA</th>
+                            <th>TAXA SPAM</th>
+                            <th>STATUS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Dados via JS -->
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-    // URL direta para exportação CSV da sua aba específica
-    const CSV_URL = "https://docs.google.com/spreadsheets/d/1Qad4P2nADyNtaYC1gegxFrHjzgUwanGisQ3Sv7AYbOE/export?format=csv&gid=372389848";
+    // SEU NOVO LINK DE PUBLICAÇÃO CSV
+    const URL_PLANILHA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQzr0NHB8FBBK9r1symUNT2RO21ld25j6h7thMdOPFzuxqjJY3oncSAQjqEVgp1INZL_uusUlwo1p8N/pub?output=csv";
 
-    let chartInstance = null;
+    let chart;
 
-    async function fetchData() {
-        const statusEl = document.getElementById("status-text");
-        statusEl.innerText = "⏳ Conectando ao Google Sheets...";
+    async function sincronizar() {
+        const loading = document.getElementById('loading-overlay');
+        loading.style.display = 'block';
         
         try {
-            const response = await fetch(CSV_URL + "&cache=" + Date.now());
-            if (!response.ok) throw new Error("Erro ao acessar planilha.");
-            
-            const text = await response.text();
-            
-            // Verifica se o retorno é HTML (erro de login) ou CSV
-            if (text.includes("<!DOCTYPE html>")) {
-                statusEl.innerText = "❌ Erro: Planilha não publicada! Vá em Arquivo > Compartilhar > Publicar na Web.";
-                return;
-            }
-
-            parseCSV(text);
-            statusEl.innerText = "✅ Sincronizado com sucesso!";
-        } catch (err) {
-            statusEl.innerText = "❌ Falha na conexão: " + err.message;
+            const response = await fetch(URL_PLANILHA + "&nocache=" + new Date().getTime());
+            const csvText = await response.text();
+            processarDados(csvText);
+        } catch (error) {
+            alert("Erro ao carregar dados. Verifique a conexão.");
+        } finally {
+            loading.style.display = 'none';
         }
     }
 
-    function parseCSV(text) {
-        const rows = text.split(/\r?\n/);
-        const tbody = document.querySelector("#dataTable tbody");
+    function processarDados(csv) {
+        const linhas = csv.split(/\r?\n/);
+        const tbody = document.querySelector("#tabelaDados tbody");
         tbody.innerHTML = "";
-        
-        const labels = [];
-        const values = [];
 
-        // Descobrir se o separador é vírgula ou ponto e vírgula
-        const firstLine = rows[0];
-        const separator = firstLine.includes(";") ? ";" : ",";
+        const datas = [];
+        const valoresSpam = [];
 
-        // Processar linhas (pula o cabeçalho)
-        for (let i = 1; i < rows.length; i++) {
-            if (!rows[i].trim()) continue;
-            
-            const cols = rows[i].split(separator);
-            if (cols.length < 3) continue;
+        // Começamos do 1 para pular o cabeçalho
+        for (let i = 1; i < linhas.length; i++) {
+            const colunas = linhas[i].split(",");
+            if (colunas.length < 3) continue;
 
-            const data = cols[0].trim();
-            const campanha = cols[1].trim();
-            // Limpa o valor do spam (remove %, troca vírgula por ponto)
-            let spamRaw = cols[2].trim().replace("%", "").replace(",", ".");
-            const spam = parseFloat(spamRaw);
+            const dataStr = colunas[0].trim();
+            const campanha = colunas[1].trim();
+            let spamRaw = colunas[2].trim().replace("%", "").replace(",", ".");
+            const spamNum = parseFloat(spamRaw);
 
-            if (!isNaN(spam)) {
-                const statusClass = spam >= 0.3 ? "critico" : "saudavel";
-                const statusTxt = spam >= 0.3 ? "REMOVER" : "APROVADO";
+            if (!isNaN(spamNum)) {
+                // Criar linha na tabela
+                const statusClass = spamNum >= 0.30 ? "badge-ruim" : "badge-bom";
+                const statusTxt = spamNum >= 0.30 ? "CRÍTICO" : "OK";
 
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${data}</td>
-                        <td style="font-weight:bold; color:#028090">${campanha}</td>
-                        <td>${spam.toFixed(2)}%</td>
-                        <td><span class="status-badge ${statusClass}">${statusTxt}</span></td>
-                    </tr>`;
-                
-                labels.push(data);
-                values.push(spam);
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${dataStr}</td>
+                    <td style="font-weight:600; color:var(--teal)">${campanha}</td>
+                    <td>${spamNum.toFixed(2)}%</td>
+                    <td><span class="badge ${statusClass}">${statusTxt}</span></td>
+                `;
+                tbody.appendChild(tr);
+
+                // Guardar para o gráfico
+                datas.push(dataStr);
+                valoresSpam.push(spamNum);
             }
         }
 
-        updateChart(labels.reverse(), values.reverse());
+        desenharGrafico(datas.reverse(), valoresSpam.reverse());
     }
 
-    function updateChart(labels, values) {
-        const ctx = document.getElementById('chartSpam').getContext('2d');
-        if (chartInstance) chartInstance.destroy();
+    function desenharGrafico(labels, values) {
+        const ctx = document.getElementById('graficoSpam').getContext('2d');
         
-        chartInstance = new Chart(ctx, {
+        if (chart) chart.destroy();
+
+        chart = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Taxa de Spam %',
+                    label: 'Taxa de Spam (%)',
                     data: values,
                     borderColor: '#02C39A',
                     backgroundColor: 'rgba(2, 195, 154, 0.1)',
                     fill: true,
-                    tension: 0.3
+                    tension: 0.4,
+                    borderWidth: 3,
+                    pointRadius: 4
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: { y: { beginAtZero: true } }
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: (value) => value + '%' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
             }
         });
     }
 
-    // Carregar dados automaticamente ao abrir
-    window.onload = fetchData;
+    // Carregar ao abrir a página
+    window.onload = sincronizar;
 </script>
 
 </body>
