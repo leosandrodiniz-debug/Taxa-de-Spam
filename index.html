@@ -247,7 +247,13 @@
     <div id="custom-toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 8px;"></div>
 
     <script>
-        const SPREADSHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSePugXgmjZTIO3_a46XJCGpjDHSSSCzUDR-Jk9OkPMafPffOIVr-M23se--EiwGrr6XE08nWMnIUwf/pub?output=csv";
+        // MAPA COMPLETO DE GIDs POR ABA DO GOOGLE SHEETS
+        const PROJETOS_GIDS = {
+            "404": "599913369", // GID da aba que você enviou no iframe
+            "2513": "COLOQUE_O_GID_DO_2513", 
+            "2470": "COLOQUE_O_GID_DO_2470", 
+            "2547": "COLOQUE_O_GID_DO_2547"
+        };
 
         const activeCharts = { gSpamDia: null };
         const PROJETOS_METADATA = {
@@ -258,7 +264,6 @@
         };
 
         let LOGS_PLANILHA = {};
-
         const DADOS = { activeProjectId: "404", activePreset: "7d", activeFilter: "todos", startDate: null, endDate: null, projetosConfig: {} };
 
         function showToast(message, type = 'success') {
@@ -305,7 +310,6 @@
             return null;
         }
 
-        // Função auxiliar para fatiar as linhas tratando as aspas e o separador perfeitamente
         function dividirLinhaCSV(line, separador) {
             const cols = []; let current = ""; let inQuotes = false;
             for (let i = 0; i < line.length; i++) {
@@ -318,7 +322,6 @@
             return cols;
         }
 
-        // MOTOR REFEITO COM MAPEAMENTO DINÂMICO DE CABEÇALHOS (Resolve colunas fora de ordem/extras)
         function processarTextoCSV(csvText) {
             const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== "");
             if (lines.length === 0) return false;
@@ -326,7 +329,6 @@
             const cabecalhoTeste = lines[0] || "";
             const separador = (cabecalhoTeste.split(';').length > cabecalhoTeste.split(',').length) ? ';' : ',';
 
-            // Encontra a linha de cabeçalhos legítima
             let headerIdx = -1;
             for (let i = 0; i < lines.length; i++) {
                 const lineLower = lines[i].toLowerCase();
@@ -337,25 +339,27 @@
             }
             if (headerIdx === -1) headerIdx = 0;
 
-            // MAPEADOR DE ÍNDICES: Localiza as colunas ideais dinamicamente pelos nomes delas
             const headerCols = dividirLinhaCSV(lines[headerIdx], separador).map(c => c.toLowerCase());
             let dataColIdx = headerCols.findIndex(c => c.includes("data"));
             let campanhaColIdx = headerCols.findIndex(c => c.includes("campanha") || c.includes("identificador") || c.includes("id") || c.includes("broadcast"));
             let spamColIdx = headerCols.findIndex(c => c.includes("spam") || c.includes("taxa"));
 
-            // Fallback preventivo caso a planilha venha sem nomes tradicionais nas colunas
             if (dataColIdx === -1) dataColIdx = 0;
             if (campanhaColIdx === -1) campanhaColIdx = 1;
             if (spamColIdx === -1) spamColIdx = 2;
 
             const dataLines = lines.slice(headerIdx + 1);
-            const novosLogs = {};
-            let registrosContabilizados = 0;
+            const currentProjId = DADOS.activeProjectId;
 
+            // Limpa APENAS o histórico do projeto ativo atual para receber o novo payload sem duplicar
+            for (let data in LOGS_PLANILHA) {
+                LOGS_PLANILHA[data] = LOGS_PLANILHA[data].filter(c => extractProjectId(c.id) !== currentProjId);
+                if (LOGS_PLANILHA[data].length === 0) delete LOGS_PLANILHA[data];
+            }
+
+            let registrosContabilizados = 0;
             dataLines.forEach(line => {
                 const cols = dividirLinhaCSV(line, separador);
-                
-                // Proteção contra linhas vazias ou quebradas
                 if (cols.length <= Math.max(dataColIdx, campanhaColIdx, spamColIdx)) return;
 
                 const rawDate = cols[dataColIdx]; 
@@ -371,32 +375,44 @@
                 if (spamVal > 0 && spamVal < 0.05 && !rawSpam.includes("%")) spamVal = spamVal * 100;
 
                 const projId = extractProjectId(rawCampaign);
-                if (!projId) return;
+                if (!projId || projId !== currentProjId) return; // Garante o isolamento estrito por aba
 
                 if (!novosLogs[dateFormatted]) novosLogs[dateFormatted] = [];
                 novosLogs[dateFormatted].push({ id: rawCampaign, spam: spamVal });
                 registrosContabilizados++;
             });
 
-            if (registrosContabilizados > 0) {
-                LOGS_PLANILHA = novosLogs;
-                reconstruirProjetosEAbas();
-                return true;
+            // Une o novo payload ao cache acumulativo geral
+            for (let data in novosLogs) {
+                if (!LOGS_PLANILHA[data]) LOGS_PLANILHA[data] = [];
+                LOGS_PLANILHA[data] = LOGS_PLANILHA[data].concat(novosLogs[data]);
             }
-            return false;
+
+            reconstruirProjetosEAbas();
+            return true;
         }
 
+        // RENDER DE CARDS FIXADO: Garante que todos os projetos sempre apareçam no topo
         function renderHubTopInitial() {
             const container = document.getElementById("hub-projetos-container");
             container.innerHTML = "";
             
-            Object.keys(DADOS.projetosConfig).forEach(id => {
-                const proj = DADOS.projetosConfig[id];
+            Object.keys(PROJETOS_METADATA).forEach(id => {
+                const name = PROJETOS_METADATA[id];
+                const config = DADOS.projetosConfig[id] || { status: "bom", mediaSpam: null };
                 const isActive = id === DADOS.activeProjectId ? "active-main" : "";
                 
-                let indicatorColor = "var(--mint)";
-                if (proj.status === "medio") indicatorColor = "var(--alert-yellow)";
-                if (proj.status === "ruim") indicatorColor = "var(--alert-red)";
+                let indicatorColor = "#CBD5E1"; // Cinza se não houver dados em cache ainda
+                let spamText = "Clique para carregar";
+                
+                if (config.mediaSpam !== null) {
+                    spamText = `Média Spam: <strong>${config.mediaSpam.toFixed(2)}%</strong>`;
+                    if (config.status === "bom") indicatorColor = "var(--mint)";
+                    if (config.status === "medio") indicatorColor = "var(--alert-yellow)";
+                    if (config.status === "ruim") indicatorColor = "var(--alert-red)";
+                } else if (id === DADOS.activeProjectId) {
+                    spamText = "Buscando dados...";
+                }
 
                 const card = document.createElement("div");
                 card.className = `hub-card ${isActive}`;
@@ -405,8 +421,8 @@
                 card.innerHTML = `
                     <div class="hub-indicator" style="background-color: ${indicatorColor};"></div>
                     <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;">ID: ${id}</div>
-                    <div style="font-weight: 700; font-size: 14px; margin: 4px 0;">${proj.nome.split(" / ").pop()}</div>
-                    <div style="font-size: 12px; color: var(--text-dark);">Média Spam: <strong>${proj.mediaSpam.toFixed(2)}%</strong></div>
+                    <div style="font-weight: 700; font-size: 14px; margin: 4px 0;">${name.split(" / ").pop()}</div>
+                    <div style="font-size: 12px; color: var(--text-dark);">${spamText}</div>
                 `;
                 container.appendChild(card);
             });
@@ -425,22 +441,18 @@
             }
 
             DADOS.projetosConfig = {};
-            for (let id in detectados) {
-                const avg = detectados[id].totalSpam / detectados[id].count;
-                DADOS.projetosConfig[id] = {
-                    nome: PROJETOS_METADATA[id] || `Projeto ${id} (Autodetectado)`,
-                    status: avg >= 0.30 ? "ruim" : (avg >= 0.10 ? "medio" : "bom"),
-                    mediaSpam: parseFloat(avg.toFixed(3))
-                };
-            }
-
-            const idsDisponiveis = Object.keys(DADOS.projetosConfig);
-            if (idsDisponiveis.length > 0 && !idsDisponiveis.includes(DADOS.activeProjectId)) {
-                DADOS.activeProjectId = idsDisponiveis[0];
-                localStorage.setItem("lastProjectViewed", idsDisponiveis[0]);
-            }
-            
-            document.getElementById("txt-header-titulo").innerText = DADOS.projetosConfig[DADOS.activeProjectId]?.nome || `Projeto ${DADOS.activeProjectId}`;
+            Object.keys(PROJETOS_METADATA).forEach(id => {
+                if (detectados[id]) {
+                    const avg = detectados[id].totalSpam / detectados[id].count;
+                    DADOS.projetosConfig[id] = {
+                        nome: PROJETOS_METADATA[id],
+                        status: avg >= 0.30 ? "ruim" : (avg >= 0.10 ? "medio" : "bom"),
+                        mediaSpam: parseFloat(avg.toFixed(3))
+                    };
+                } else {
+                    DADOS.projetosConfig[id] = { nome: PROJETOS_METADATA[id], status: "bom", mediaSpam: null };
+                }
+            });
 
             buildCalendarGrids(); 
             renderHubTopInitial(); 
@@ -451,20 +463,32 @@
             const btn = document.getElementById("btn-sync-sheets");
             btn.disabled = true; btn.innerText = "⏳ Sincronizando...";
             
+            const currentProjId = DADOS.activeProjectId;
+            const targetGid = PROJETOS_GIDS[currentProjId];
+
+            // Alerta preventivo se o usuário esquecer de cadastrar o GID de alguma aba
+            if (!targetGid || targetGid.includes("COLOQUE")) {
+                showToast(`Insira o número de GID do Projeto ${currentProjId} no código JavaScript.`, "error");
+                btn.disabled = false; btn.innerText = "🔄 Sincronizar Sheets";
+                reconstruirProjetosEAbas();
+                return;
+            }
+            
             try {
-                const response = await fetch(`${SPREADSHEET_CSV_URL}&_nocache=${Date.now()}`);
+                // Monta a requisição apontando diretamente para a aba correta do projeto ativo
+                const targetUrl = `https://docs.google.com/spreadsheets/d/e/2PACX-1vSePugXgmjZTIO3_a46XJCGpjDHSSSCzUDR-Jk9OkPMafPffOIVr-M23se--EiwGrr6XE08nWMnIUwf/pub?gid=${targetGid}&output=csv&_nocache=${Date.now()}`;
+                
+                const response = await fetch(targetUrl);
                 if (!response.ok) throw new Error();
                 const csvText = await response.text();
                 
-                if (processarTextoCSV(csvText)) {
-                    showToast("Sincronizado com sucesso com o Google Sheets.", "success");
-                    document.getElementById("banner-alerta-local").style.display = "none";
-                } else {
-                    showToast("Planilha vazia ou com cabeçalhos inválidos.", "error");
-                }
+                processarTextoCSV(csvText);
+                showToast(`Aba do Projeto ${currentProjId} atualizada com sucesso!`, "success");
+                document.getElementById("banner-alerta-local").style.display = "none";
             } catch (error) {
                 document.getElementById("banner-alerta-local").style.display = "block";
-                showToast("Bloqueio de CORS local. Use o arquivo manual para rodar direto do PC.", "error");
+                showToast("Bloqueio de CORS local. Use o arquivo manual para rodar do PC.", "error");
+                reconstruirProjetosEAbas();
             } finally {
                 btn.disabled = false; btn.innerText = "🔄 Sincronizar Sheets";
             }
@@ -479,7 +503,7 @@
                     showToast("Planilha manual processada com sucesso!", "success");
                     document.getElementById("banner-alerta-local").style.display = "none";
                 } else {
-                    showToast("Arquivo inválido. Verifique as colunas.", "error");
+                    showToast("Arquivo inválido para o projeto selecionado.", "error");
                 }
             };
             reader.readAsText(file);
@@ -559,6 +583,7 @@
             refreshCalendarUI();
         }
 
+        // MUDANÇA DE ABAS OPERACIONAL: Salva a preferência e dispara o fetch para a aba correta
         function changeProject(id) { 
             DADOS.activeProjectId = id; 
             localStorage.setItem("lastProjectViewed", id); 
@@ -567,10 +592,11 @@
             const card = document.querySelector(`[data-id="${id}"]`); 
             if (card) card.classList.add("active-main"); 
             
-            document.getElementById("txt-header-titulo").innerText = DADOS.projetosConfig[id]?.nome || `Projeto ${id}`; 
+            document.getElementById("txt-header-titulo").innerText = PROJETOS_METADATA[id] || `Projeto ${id}`; 
             document.getElementById("painel-auditoria-avancada").style.display = "none"; 
             DADOS.activeFilter = "todos"; 
-            renderDashboardCompleto(); 
+            
+            sincronizarGoogleSheets(); // Dispara o carregamento dinâmico da nova aba clicada
         }
 
         function alterarFiltroCampanha(filtro) { DADOS.activeFilter = filtro; document.querySelectorAll(".btn-filter").forEach(btn => btn.classList.remove("active-filter")); let targetId = filtro === "aprovado" ? "btn-filt-aprovado" : (filtro === "otimizar" ? "btn-filt-otimizar" : (filtro === "remover" ? "btn-filt-remover" : "btn-filt-todos")); document.getElementById(targetId).classList.add("active-filter"); renderDashboardCompleto(false); }
@@ -615,7 +641,7 @@
 
             const tbody = document.getElementById("tabela-broadcast-dados").querySelector("tbody");
             if(campanhasExibidas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:24px;">Nenhuma campanha ativa para o Projeto ${projId} neste período.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:24px;">Nenhuma campanha ativa para o Projeto ${projId} neste período (Aba vazia ou sem filtros correspondentes).</td></tr>`;
             } else {
                 tbody.innerHTML = campanhasExibidas.map(c => {
                     let statusLabel = c.spam <= 0.10 ? "Aprovado" : (c.spam < 0.30 ? "Otimizar" : "Remover");
@@ -630,7 +656,7 @@
 
         function renderInsights() {
             const projId = DADOS.activeProjectId; const spamMedio = DADOS.projetosConfig[projId]?.mediaSpam || 0.0;
-            document.getElementById("caixa-insights-postmaster").innerHTML = `<div><strong>💡 AUDITORIA DE ENTREGABELIDADE: PROJETO ${projId}</strong><p style="font-size:12px;">Média sanitária atual do Postmaster em: ${spamMedio.toFixed(3)}%.</p></div>`;
+            document.getElementById("caixa-insights-postmaster").innerHTML = `<div><strong>💡 AUDITORIA DE ENTREGABELIDADE: PROJETO ${projId}</strong><p style="font-size:12px;">Média sanitária atual do Postmaster em: ${spamMedio !== null ? spamMedio.toFixed(3) + '%' : 'Aguardando sincronização de aba...'}.</p></div>`;
         }
 
         function inspecionarCampanhaRow(element, idCampanha, dataCampanha, spamAtual) {
@@ -644,7 +670,7 @@
             
             if (spamAtual >= 0.30) {
                 statusBadge = "<span class='badge-status badge-ruim'>🔴 CRÍTICO (REMOVER)</span>";
-                planoAcao = "<strong>MEDIDA DE EMERGÊNCIA:</strong> Pausar imediatamente disparos semelhantes usando este remetente. Taxa acima do limite do Postmaster. Necessário rodar uma higienização rigorosa na lista de leads frios e verificar se o IP caiu em Blacklist antes de reativar.";
+                planoAcao = "<strong>MEDIDA DE EMERGENCY:</strong> Pausar imediatamente disparos semelhantes usando este remetente. Taxa acima do limite do Postmaster. Necessário rodar uma higienização rigorosa na lista de leads frios e verificar se o IP caiu em Blacklist antes de reativar.";
             } else if (spamAtual >= 0.10) {
                 statusBadge = "<span class='badge-status badge-medio'>🟡 ATENÇÃO (OTIMIZAR)</span>";
                 planoAcao = "<strong>AÇÃO CORRETIVA:</strong> Margem de atenção detectada. Reduzir o volume de e-mails enviados por hora (Throttling). Revisar urgentemente a linha de assunto para remover termos comerciais agressivos que acionam filtros de spam mecânicos.";
