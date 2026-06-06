@@ -96,6 +96,12 @@
 
                 <!-- Controles do Header -->
                 <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+                    <!-- Sincronização Google Sheets -->
+                    <button class="flex items-center gap-2 bg-[#173052] hover:bg-[#204575] border border-emerald-500/30 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 text-white relative" onclick="openSyncModal()">
+                        <i class="fa-solid fa-file-excel text-emerald-400"></i>
+                        <span>Planilha Google</span>
+                        <span id="syncIndicator" class="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#0b2240] hidden"></span>
+                    </button>
                     <!-- Status Badge -->
                     <span id="dashStatusBadge" class="bg-[#f3a83b]/20 text-[#f3a83b] text-xs font-black px-4 py-2 rounded-full border border-[#f3a83b]/30 tracking-wider">
                         ⚠️ OTIMIZAR - 0.18%
@@ -213,10 +219,10 @@
                 </section>
             </div>
 
-            <!-- ================= NOVO GRID DE GRÁFICOS COMPLEMENTARES (SOLICITADO) ================= -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
+            <!-- ================= GRID DE GRÁFICOS COMPLEMENTARES (SOLICITADO) ================= -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-2">
                 
-                <!-- GRÁFICO DE BARRAS POR DIA -->
+                <!-- GRÁFICO DE BARRAS POR DIA (Volume de Envios) -->
                 <section class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-4">
                     <h2 class="text-sm font-extrabold text-[#0b2240] tracking-wider uppercase flex items-center gap-2">
                         <span class="w-1.5 h-4 bg-blue-500 rounded-full"></span>
@@ -227,11 +233,22 @@
                     </div>
                 </section>
 
-                <!-- GRÁFICO DE BARRAS HORIZONTAIS POR CAMPANHA / HORÁRIO -->
+                <!-- NOVO: GRÁFICO DE LINHA - TAXA DE SPAM POR DIA (MÉDIA) -->
                 <section class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-4">
                     <h2 class="text-sm font-extrabold text-[#0b2240] tracking-wider uppercase flex items-center gap-2">
                         <span class="w-1.5 h-4 bg-amber-500 rounded-full"></span>
-                        📈 Taxa Média de Spam por Campanha (Horário)
+                        📈 Taxa de Spam por Dia (%)
+                    </h2>
+                    <div class="relative w-full h-[320px]">
+                        <canvas id="dailySpamLineChart"></canvas>
+                    </div>
+                </section>
+
+                <!-- GRÁFICO DE BARRAS HORIZONTAIS POR CAMPANHA / HORÁRIO -->
+                <section class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-4">
+                    <h2 class="text-sm font-extrabold text-[#0b2240] tracking-wider uppercase flex items-center gap-2">
+                        <span class="w-1.5 h-4 bg-emerald-500 rounded-full"></span>
+                        📊 Taxa Média por Horário
                     </h2>
                     <div class="relative w-full h-[320px]">
                         <canvas id="campaignSpamChart"></canvas>
@@ -263,7 +280,52 @@
         </div>
     </footer>
 
-    <!-- Sistema Simples de Toasts/Notificações (Evitando alerts nativos) -->
+    <!-- MODAL DE SINCRONIZAÇÃO GOOGLE SHEETS -->
+    <div id="syncModal" class="fixed inset-0 bg-[#0b2240]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+        <div class="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border border-slate-100 transform translate-y-4 transition-all duration-300 flex flex-col gap-5" id="syncModalContent">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+                <h3 class="text-lg font-extrabold text-[#0b2240] flex items-center gap-2">
+                    <i class="fa-solid fa-file-excel text-emerald-600"></i>
+                    Vincular Planilha do Google
+                </h3>
+                <button onclick="closeSyncModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <div class="text-xs text-slate-500 leading-relaxed flex flex-col gap-2.5 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <p class="font-bold text-[#0b2240] mb-1">Como obter o link CSV correto:</p>
+                <div class="flex gap-2">
+                    <span class="bg-[#0b2240] text-white w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] shrink-0">1</span>
+                    <span>No seu Google Sheets, vá em <strong>Arquivo</strong> &rarr; <strong>Compartilhar</strong> &rarr; <strong>Publicar na web</strong>.</span>
+                </div>
+                <div class="flex gap-2">
+                    <span class="bg-[#0b2240] text-white w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] shrink-0">2</span>
+                    <span>Escolha "Planilha inteira" e mude de Página Web para <strong>Valores separados por vírgula (.csv)</strong>.</span>
+                </div>
+                <div class="flex gap-2">
+                    <span class="bg-[#0b2240] text-white w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] shrink-0">3</span>
+                    <span>Clique em <strong>Publicar</strong>, copie o link que aparece e cole no campo abaixo.</span>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <label class="text-xs font-bold text-[#0b2240]">URL da Planilha Publicada (.csv)</label>
+                <input type="text" id="sheetUrlInput" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv" class="w-full border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            </div>
+
+            <div class="flex gap-3 mt-2">
+                <button onclick="clearSyncUrl()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl text-xs font-bold transition-all duration-200">
+                    Remover Vínculo
+                </button>
+                <button onclick="handleSyncSubmit()" class="flex-1 bg-[#0b2240] hover:bg-indigo-900 text-white py-3 rounded-xl text-xs font-bold transition-all duration-200 shadow-md">
+                    Sincronizar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sistema Simples de Toasts/Notificações -->
     <div id="toast" class="fixed bottom-20 right-6 bg-[#0c2340] text-white border border-slate-700 px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 transform translate-y-20 opacity-0 pointer-events-none flex items-center gap-2 z-50">
         <span id="toastIcon">💡</span>
         <span id="toastText">Ação efetuada com sucesso!</span>
@@ -271,7 +333,7 @@
 
     <!-- ================= SISTEMA DE DADOS E DINÂMICA (JAVASCRIPT) ================= -->
     <script>
-        // Dados Estruturados com as classificações atualizadas para Aprovado, Otimizar e Remover
+        // Dados de Fallback (Padrão quando não houver planilha google vinculada)
         const projectsData = [
             {
                 id: 404,
@@ -383,8 +445,10 @@
             }
         ];
 
+        // Instâncias globais de gráficos para destruição e recreação adequada
         let activeChart = null;
         let dailyVolumeChartInstance = null;
+        let dailySpamLineChartInstance = null;
         let campaignSpamChartInstance = null;
         let selectedProject = null;
 
@@ -463,21 +527,28 @@
             
             const badge = document.getElementById('dashStatusBadge');
             badge.innerText = proj.statusGeral;
-            // Remover classes de cores anteriores
             badge.className = "text-xs font-black px-4 py-2 rounded-full border tracking-wider " + getBadgeColorClass(proj.statusGeral);
 
-            // Setar Métricas
+            // Carregar dados salvos do localStorage se houver vinculação ativa
+            const savedUrl = localStorage.getItem(`gspread_url_${proj.id}`);
+            if (savedUrl) {
+                document.getElementById('sheetUrlInput').value = savedUrl;
+                document.getElementById('syncIndicator').classList.remove('hidden');
+                syncGoogleSheets(savedUrl, proj.id);
+            } else {
+                document.getElementById('sheetUrlInput').value = "";
+                document.getElementById('syncIndicator').classList.add('hidden');
+                // Carregar com fallback nativo
+                renderTableData(proj.detalhesTabela);
+                buildHistoricalChart(proj);
+                buildComplementaryCharts(proj);
+            }
+
+            // Setar Métricas Iniciais
             document.getElementById('metricDias').innerText = proj.mDias;
             document.getElementById('metricEnvios').innerText = proj.mEnvios;
             document.getElementById('metricCampanhas').innerText = proj.mCampanhas;
             document.getElementById('metricSpam').innerText = proj.mSpam;
-
-            // Preencher Tabela
-            renderTableData(proj.detalhesTabela);
-
-            // Gerar Gráficos ChartJS
-            buildHistoricalChart(proj);
-            buildComplementaryCharts(proj);
 
             showToast(`Dashboard do ${proj.title} carregado`);
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -493,11 +564,11 @@
         // Helper para mapear os novos badges baseados em Aprovado, Otimizar e Remover
         function getBadgeColorClass(statusText) {
             if (statusText.includes("APROVADO")) {
-                return "bg-emerald-50 text-emerald-600 border-emerald-200"; // Verde
+                return "bg-emerald-50 text-emerald-600 border-emerald-200"; 
             } else if (statusText.includes("OTIMIZAR")) {
-                return "bg-amber-50 text-amber-500 border-amber-200"; // Amarelo
+                return "bg-amber-50 text-amber-500 border-amber-200"; 
             } else {
-                return "bg-rose-50 text-rose-600 border-rose-200"; // Vermelho
+                return "bg-rose-50 text-rose-600 border-rose-200"; 
             }
         }
 
@@ -533,11 +604,11 @@
             if (!val || val === "—") return "text-slate-400 font-normal";
             const num = parseFloat(val.replace('%', ''));
             if (num < 0.10) {
-                return "text-[#00b489]"; // Verde (Aprovado)
+                return "text-[#00b489]"; 
             } else if (num >= 0.10 && num < 0.30) {
-                return "text-[#f3a83b]"; // Amarelo (Otimizar)
+                return "text-[#f3a83b]"; 
             } else {
-                return "text-[#f43f5e]"; // Vermelho (Remover)
+                return "text-[#f43f5e]"; 
             }
         }
 
@@ -550,20 +621,13 @@
             return `<span class="text-slate-400">0</span>`;
         }
 
-        // Constrói Gráfico Multilinhas Idêntico ao Print 2
+        // Constrói Gráfico Multilinhas de histórico
         function buildHistoricalChart(proj) {
             const ctx = document.getElementById('historicalChart').getContext('2d');
-            
-            if (activeChart) {
-                activeChart.destroy();
-            }
+            if (activeChart) { activeChart.destroy(); }
 
-            // Labels temporais
             const labels = ["25-04 (sáb.)", "28-04 (ter.)", "01-05 (sex.)", "04-05 (seg.)", "07-05 (qui.)", "10-05 (dom.)", "13-05 (qua.)", "16-05 (sáb.)", "19-05 (ter.)", "24-05 (dom.)"];
-            
-            // Construir datasets dinamicamente
             const datasets = proj.datasetsSpam.map(ds => {
-                // Interpolação para desenhar curvas suaves
                 return {
                     label: ds.label,
                     data: ds.data,
@@ -576,7 +640,6 @@
                 };
             });
 
-            // Linha Guia de Teto de Alerta (Linha tracejada de Teto 0.3%)
             datasets.push({
                 label: "Teto 0.3% (Remover)",
                 data: Array(labels.length).fill(0.30),
@@ -590,10 +653,7 @@
 
             activeChart = new Chart(ctx, {
                 type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: datasets
-                },
+                data: { labels: labels, datasets: datasets },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -601,70 +661,39 @@
                         legend: {
                             position: 'bottom',
                             labels: {
-                                boxWidth: 10,
-                                boxHeight: 10,
-                                padding: 12,
-                                font: {
-                                    size: 10,
-                                    weight: 'bold'
-                                },
-                                usePointStyle: true,
-                                pointStyle: 'circle'
+                                boxWidth: 10, boxHeight: 10, padding: 12,
+                                font: { size: 10, weight: 'bold' },
+                                usePointStyle: true, pointStyle: 'circle'
                             }
                         },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                            backgroundColor: '#0b2240',
-                            titleFont: { size: 12, weight: 'bold' },
-                            bodyFont: { size: 11 },
-                            padding: 10,
-                            cornerRadius: 8
-                        }
+                        tooltip: { mode: 'index', intersect: false, backgroundColor: '#0b2240' }
                     },
                     scales: {
                         y: {
-                            min: 0.00,
-                            max: 0.60,
+                            min: 0.00, max: 0.60,
                             ticks: {
                                 stepSize: 0.15,
-                                callback: function(value) {
-                                    return value.toFixed(2) + '%';
-                                },
-                                color: '#94a3b8',
-                                font: { size: 10, weight: '600' }
+                                callback: value => value.toFixed(2) + '%',
+                                color: '#94a3b8', font: { size: 10, weight: '600' }
                             },
-                            grid: {
-                                color: '#f1f5f9'
-                            }
+                            grid: { color: '#f1f5f9' }
                         },
-                        x: {
-                            ticks: {
-                                color: '#94a3b8',
-                                font: { size: 10, weight: '600' }
-                            },
-                            grid: {
-                                display: false
-                            }
-                        }
+                        x: { ticks: { color: '#94a3b8', font: { size: 10, weight: '600' } }, grid: { display: false } }
                     }
                 }
             });
         }
 
-        // Constrói os novos gráficos adicionais: Por Dia e Por Campanha
+        // Constrói os gráficos adicionais: Volume por Dia, Taxa de Spam por Dia (Novo) e Média por Horário
         function buildComplementaryCharts(proj) {
-            // 1. GRÁFICO POR DIA (Volume de Envios)
-            const ctxDaily = document.getElementById('dailyVolumeChart').getContext('2d');
-            if (dailyVolumeChartInstance) {
-                dailyVolumeChartInstance.destroy();
-            }
-
-            // Inverter para ordem cronológica (esquerda -> direita)
             const sortedHistory = [...proj.detalhesTabela].reverse();
             const dailyLabels = sortedHistory.map(h => h.data);
-            const dailyData = sortedHistory.map(h => parseInt(h.envios.replace(/\./g, '')) || 0);
 
+            // 1. GRÁFICO DE BARRAS POR DIA (Volume de Envios)
+            const ctxDaily = document.getElementById('dailyVolumeChart').getContext('2d');
+            if (dailyVolumeChartInstance) { dailyVolumeChartInstance.destroy(); }
+
+            const dailyData = sortedHistory.map(h => parseInt(h.envios.replace(/\./g, '')) || 0);
             dailyVolumeChartInstance = new Chart(ctxDaily, {
                 type: 'bar',
                 data: {
@@ -680,46 +709,95 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#0b2240',
-                            callbacks: {
-                                label: function(context) {
-                                    return ' Envios: ' + context.raw.toLocaleString('pt-BR');
-                                }
-                            }
-                        }
-                    },
+                    plugins: { legend: { display: false } },
                     scales: {
                         y: {
                             grid: { color: '#f1f5f9' },
                             ticks: {
-                                color: '#94a3b8',
-                                font: { size: 10, weight: '600' },
-                                callback: function(val) {
-                                    return val >= 1000 ? (val / 1000) + 'k' : val;
-                                }
+                                color: '#94a3b8', font: { size: 10, weight: '600' },
+                                callback: val => val >= 1000 ? (val / 1000) + 'k' : val
                             }
                         },
-                        x: {
-                            grid: { display: false },
-                            ticks: { color: '#94a3b8', font: { size: 10, weight: '600' } }
-                        }
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10, weight: '600' } } }
                     }
                 }
             });
 
-            // 2. GRÁFICO POR CAMPANHA / HORÁRIO (Taxa média de Spam)
+            // 2. NOVO: GRÁFICO DE LINHA - TAXA DE SPAM POR DIA
+            const ctxDailySpam = document.getElementById('dailySpamLineChart').getContext('2d');
+            if (dailySpamLineChartInstance) { dailySpamLineChartInstance.destroy(); }
+
+            // Calcular taxa de spam real média de cada dia somando e tirando a média dos horários válidos
+            const dailySpamData = sortedHistory.map(h => {
+                let sum = 0;
+                let count = 0;
+                const campaignKeys = ['h1', 'h9', 'h12', 'h14', 'h15', 'h16', 'h18', 'h19', 'h21'];
+                campaignKeys.forEach(k => {
+                    const val = h[k];
+                    if (val && val !== '—') {
+                        const numericVal = parseFloat(val.replace('%', ''));
+                        if (!isNaN(numericVal)) {
+                            sum += numericVal;
+                            count++;
+                        }
+                    }
+                });
+                return count > 0 ? parseFloat((sum / count).toFixed(3)) : 0;
+            });
+
+            dailySpamLineChartInstance = new Chart(ctxDailySpam, {
+                type: 'line',
+                data: {
+                    labels: dailyLabels,
+                    datasets: [
+                        {
+                            label: 'Spam Médio do Dia',
+                            data: dailySpamData,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                            borderWidth: 3,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#f59e0b',
+                            fill: true,
+                            tension: 0.35
+                        },
+                        {
+                            label: 'Teto Alerta (0.3%)',
+                            data: Array(dailyLabels.length).fill(0.30),
+                            borderColor: '#f43f5e',
+                            borderDash: [5, 5],
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            min: 0, max: 0.60,
+                            grid: { color: '#f1f5f9' },
+                            ticks: {
+                                stepSize: 0.15,
+                                color: '#94a3b8', font: { size: 10, weight: '600' },
+                                callback: val => val.toFixed(2) + '%'
+                            }
+                        },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10, weight: '600' } } }
+                    }
+                }
+            });
+
+            // 3. GRÁFICO POR CAMPANHA / HORÁRIO (Taxa média de Spam)
             const ctxCampaign = document.getElementById('campaignSpamChart').getContext('2d');
-            if (campaignSpamChartInstance) {
-                campaignSpamChartInstance.destroy();
-            }
+            if (campaignSpamChartInstance) { campaignSpamChartInstance.destroy(); }
 
             const campaignKeys = ['h1', 'h9', 'h12', 'h14', 'h15', 'h16', 'h18', 'h19', 'h21'];
             const campaignLabels = ['Campanha H1', 'Campanha H9', 'Campanha H12', 'Campanha H14', 'Campanha H15', 'Campanha H16', 'Campanha H18', 'Campanha H19', 'Campanha H21'];
 
-            // Calcular taxa média real de spam de cada horário (pulando vazios '—')
             const campaignData = campaignKeys.map(key => {
                 let sum = 0;
                 let count = 0;
@@ -741,53 +819,244 @@
                 data: {
                     labels: campaignLabels,
                     datasets: [{
-                        label: 'Taxa Média de Spam',
+                        label: 'Taxa Média',
                         data: campaignData,
                         backgroundColor: campaignData.map(val => {
-                            if (val < 0.10) return '#00b489'; // Verde (Aprovado)
-                            if (val < 0.30) return '#f3a83b'; // Amarelo (Otimizar)
-                            return '#f43f5e'; // Vermelho (Remover)
+                            if (val < 0.10) return '#00b489'; 
+                            if (val < 0.30) return '#f3a83b'; 
+                            return '#f43f5e'; 
                         }),
                         borderRadius: 6,
                         maxBarThickness: 16
                     }]
                 },
                 options: {
-                    indexAxis: 'y', // Define o gráfico como horizontal!
+                    indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#0b2240',
-                            callbacks: {
-                                label: function(context) {
-                                    return ' Média: ' + context.raw.toFixed(2) + '%';
-                                }
-                            }
-                        }
-                    },
+                    plugins: { legend: { display: false } },
                     scales: {
                         x: {
-                            min: 0,
-                            max: 0.60,
+                            min: 0, max: 0.60,
                             grid: { color: '#f1f5f9' },
                             ticks: {
                                 stepSize: 0.15,
-                                color: '#94a3b8',
-                                font: { size: 10, weight: '600' },
-                                callback: function(val) {
-                                    return val.toFixed(2) + '%';
-                                }
+                                color: '#94a3b8', font: { size: 10, weight: '600' },
+                                callback: val => val.toFixed(2) + '%'
                             }
                         },
-                        y: {
-                            grid: { display: false },
-                            ticks: { color: '#94a3b8', font: { size: 10, weight: '600' } }
-                        }
+                        y: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10, weight: '600' } } }
                     }
                 }
             });
+        }
+
+        // Motor de Parsing para CSVs padrão Google Sheets
+        function parseCSV(text) {
+            let lines = [];
+            let row = [""];
+            let inQuotes = false;
+
+            for (let i = 0; i < text.length; i++) {
+                let c = text[i];
+                let next = text[i+1];
+                if (c === '"') {
+                    if (inQuotes && next === '"') { row[row.length - 1] += '"'; i++; }
+                    else { inQuotes = !inQuotes; }
+                } else if (c === ',' && !inQuotes) {
+                    row.push("");
+                } else if ((c === '\r' || c === '\n') && !inQuotes) {
+                    if (c === '\r' && next === '\n') { i++; }
+                    lines.push(row);
+                    row = [""];
+                } else {
+                    row[row.length - 1] += c;
+                }
+            }
+            if (row.length > 1 || row[0] !== "") { lines.push(row); }
+            if (lines.length === 0) return { headers: [], data: [] };
+
+            const headers = lines[0].map(h => h.trim().toLowerCase());
+            const data = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i];
+                if (values.length < headers.length) continue;
+                const rowObj = {};
+                headers.forEach((header, index) => {
+                    rowObj[header] = values[index] ? values[index].trim() : "";
+                });
+                data.push(rowObj);
+            }
+            return { headers, data };
+        }
+
+        // Mapeia os dados brutos do Google Sheets estruturados
+        function mapCSVToTable(parsed) {
+            const { headers, data } = parsed;
+            
+            const findKey = (possibleNames) => {
+                return headers.find(h => possibleNames.includes(h.toLowerCase().trim()));
+            };
+
+            const dataKey = findKey(['data', 'date', 'dia', 'período']);
+            const enviosKey = findKey(['envios', 'volume', 'sent', 'quantidade']);
+            const ge03Key = findKey(['≥ 0,3', '>=0,3', '>=0.3', 'ge0.3', 'ge03']);
+            
+            return data.map(row => {
+                return {
+                    data: row[dataKey] || '—',
+                    envios: row[enviosKey] || '0',
+                    ge03: row[ge03Key] || '0',
+                    h1: row['h1'] || '—',
+                    h9: row['h9'] || '—',
+                    h12: row['h12'] || '—',
+                    h14: row['h14'] || '—',
+                    h15: row['h15'] || '—',
+                    h16: row['h16'] || '—',
+                    h18: row['h18'] || '—',
+                    h19: row['h19'] || '—',
+                    h21: row['h21'] || '—'
+                };
+            });
+        }
+
+        // Recalcula métricas, cores e status em tempo real a partir da planilha carregada
+        function recalculateMetricsFromTable(proj) {
+            const table = proj.detalhesTabela;
+            proj.mDias = table.length.toString();
+            
+            let totalEnvios = 0;
+            let campaignsGe03 = 0;
+            let totalSpamSum = 0;
+            let spamCount = 0;
+
+            table.forEach(row => {
+                const env = parseInt(row.envios.replace(/\./g, '')) || 0;
+                totalEnvios += env;
+
+                const campaignKeys = ['h1', 'h9', 'h12', 'h14', 'h15', 'h16', 'h18', 'h19', 'h21'];
+                campaignKeys.forEach(k => {
+                    const val = row[k];
+                    if (val && val !== '—') {
+                        const numericVal = parseFloat(val.replace('%', ''));
+                        if (!isNaN(numericVal)) {
+                            totalSpamSum += numericVal;
+                            spamCount++;
+                            if (numericVal >= 0.30) { campaignsGe03++; }
+                        }
+                    }
+                });
+            });
+
+            proj.mEnvios = totalEnvios.toLocaleString('pt-BR');
+            proj.mCampanhas = campaignsGe03.toString();
+            
+            const avgSpam = spamCount > 0 ? (totalSpamSum / spamCount) : 0;
+            proj.mSpam = avgSpam.toFixed(2) + "%";
+
+            let label = "✅ APROVADO";
+            if (avgSpam >= 0.10 && avgSpam < 0.30) {
+                label = "⚠️ OTIMIZAR";
+            } else if (avgSpam >= 0.30) {
+                label = "❌ REMOVER";
+            }
+            proj.statusGeral = `${label} - ${proj.mSpam}`;
+
+            // Atualiza na tela
+            document.getElementById('metricDias').innerText = proj.mDias;
+            document.getElementById('metricEnvios').innerText = proj.mEnvios;
+            document.getElementById('metricCampanhas').innerText = proj.mCampanhas;
+            document.getElementById('metricSpam').innerText = proj.mSpam;
+
+            const badge = document.getElementById('dashStatusBadge');
+            badge.innerText = proj.statusGeral;
+            badge.className = "text-xs font-black px-4 py-2 rounded-full border tracking-wider " + getBadgeColorClass(proj.statusGeral);
+        }
+
+        // Sincroniza dinamicamente usando a API de Fetch de CSVs
+        async function syncGoogleSheets(url, projectId) {
+            try {
+                let csvUrl = url;
+                if (url.includes("docs.google.com/spreadsheets") && !url.includes("export?format=csv") && !url.includes("pub?output=csv")) {
+                    const matches = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                    if (matches && matches[1]) {
+                        csvUrl = `https://docs.google.com/spreadsheets/d/${matches[1]}/export?format=csv`;
+                    }
+                }
+
+                showToast("Buscando dados no Google Sheets...");
+
+                const response = await fetch(csvUrl);
+                if (!response.ok) throw new Error("Erro ao carregar link.");
+
+                const csvText = await response.text();
+                const parsed = parseCSV(csvText);
+                
+                if (parsed.data.length === 0) {
+                    throw new Error("Planilha vazia ou com cabeçalho inválido.");
+                }
+
+                const mappedData = mapCSVToTable(parsed);
+                const proj = projectsData.find(p => p.id === projectId);
+                
+                if (proj) {
+                    proj.detalhesTabela = mappedData;
+                    recalculateMetricsFromTable(proj);
+
+                    renderTableData(proj.detalhesTabela);
+                    buildHistoricalChart(proj);
+                    buildComplementaryCharts(proj);
+                    
+                    localStorage.setItem(`gspread_url_${projectId}`, url);
+                    document.getElementById('syncIndicator').classList.remove('hidden');
+                    
+                    showToast("Planilha sincronizada!");
+                    return true;
+                }
+            } catch (err) {
+                console.error(err);
+                showToast("Erro de leitura: certifique-se de publicar na web como CSV.");
+                return false;
+            }
+        }
+
+        // Funções para controle do modal de Sincronização
+        function openSyncModal() {
+            const modal = document.getElementById('syncModal');
+            const content = document.getElementById('syncModalContent');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            content.classList.remove('translate-y-4');
+        }
+
+        function closeSyncModal() {
+            const modal = document.getElementById('syncModal');
+            const content = document.getElementById('syncModalContent');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            content.classList.add('translate-y-4');
+        }
+
+        function handleSyncSubmit() {
+            const url = document.getElementById('sheetUrlInput').value.trim();
+            if (!url) {
+                showToast("Por favor, cole um link válido.");
+                return;
+            }
+            if (selectedProject) {
+                syncGoogleSheets(url, selectedProject.id);
+                closeSyncModal();
+            }
+        }
+
+        function clearSyncUrl() {
+            if (selectedProject) {
+                localStorage.removeItem(`gspread_url_${selectedProject.id}`);
+                document.getElementById('sheetUrlInput').value = "";
+                document.getElementById('syncIndicator').classList.add('hidden');
+                showToast("Vínculo removido. Restaurando padrão local...");
+                closeSyncModal();
+                openDashboard(selectedProject.id); // Recarrega do padrão local
+            }
         }
 
         // Filtro interativo na tabela "HISTÓRICO DIÁRIO"
@@ -798,7 +1067,7 @@
             const tr = table.getElementsByTagName("tr");
 
             for (let i = 1; i < tr.length; i++) {
-                const td = tr[i].getElementsByTagName("td")[0]; // Coluna DATA
+                const td = tr[i].getElementsByTagName("td")[0]; 
                 if (td) {
                     const txtValue = td.textContent || td.innerText;
                     if (txtValue.toUpperCase().indexOf(filter) > -1) {
@@ -810,27 +1079,22 @@
             }
         }
 
-        // Ações de Filtros de Período do Dashboard
+        // Filtros de Período do Dashboard
         function setPeriod(period) {
-            // Resetar botões
             ['7d', '30d', '90d', 'all'].forEach(p => {
                 const btn = document.getElementById(`btn-${p}`);
                 btn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 text-slate-500 hover:text-[#0b2240]";
             });
-            // Ativar selecionado
             const activeBtn = document.getElementById(`btn-${period}`);
             activeBtn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 bg-indigo-50 text-indigo-600 shadow-sm";
 
-            // Simular alteração de dados no Gráfico e Métricas com animação suave
             if (selectedProject) {
                 const factor = period === '7d' ? 0.7 : period === '90d' ? 1.4 : period === 'all' ? 2 : 1;
-                
-                // Modificar levemente as métricas de simulação
                 const baseEnvios = parseInt(selectedProject.mEnvios.replace(/\./g, ''));
+                
                 document.getElementById('metricEnvios').innerText = Math.round(baseEnvios * factor).toLocaleString('pt-BR');
                 document.getElementById('metricDias').innerText = period === '7d' ? '7' : period === '30d' ? '30' : period === '90d' ? '90' : '150';
                 
-                // Re-gerar dados simulados do gráfico de histórico
                 activeChart.data.datasets.forEach(dataset => {
                     if (!dataset.label.includes('Teto')) {
                         dataset.data = dataset.data.map(val => Math.min(0.55, Math.max(0.01, val * (0.8 + Math.random() * 0.4))));
@@ -838,9 +1102,11 @@
                 });
                 activeChart.update();
 
-                // Atualizar também o gráfico por Dia e Campanha de forma coerente
                 dailyVolumeChartInstance.data.datasets[0].data = dailyVolumeChartInstance.data.datasets[0].data.map(val => Math.round(val * factor * (0.9 + Math.random() * 0.2)));
                 dailyVolumeChartInstance.update();
+
+                dailySpamLineChartInstance.data.datasets[0].data = dailySpamLineChartInstance.data.datasets[0].data.map(val => Math.min(0.55, Math.max(0.01, val * (0.8 + Math.random() * 0.4))));
+                dailySpamLineChartInstance.update();
 
                 campaignSpamChartInstance.data.datasets[0].data = campaignSpamChartInstance.data.datasets[0].data.map(val => Math.min(0.55, Math.max(0.01, val * (0.8 + Math.random() * 0.4))));
                 campaignSpamChartInstance.update();
@@ -849,7 +1115,7 @@
             }
         }
 
-        // Exportador de CSV Funcional
+        // Exportador de CSV
         function downloadCSV() {
             if (!selectedProject) return;
             
@@ -870,7 +1136,7 @@
             showToast("Planilha CSV baixada!");
         }
 
-        // Simulação de Loading de atualização para os cards da home individualmente
+        // Animação de atualizar o Card individual do Hub
         function refreshSingleCard(btnElement) {
             const icon = btnElement.querySelector('i');
             icon.classList.add('fa-spin');
@@ -883,51 +1149,48 @@
             }, 1000);
         }
 
-        // Simulação de Atualização Geral do Dashboard Principal
+        // Atualização geral
         function triggerRefresh() {
             const icon = document.getElementById('refreshIconDash');
             icon.classList.add('fa-spin');
             
-            // Randomiza dados ligeiramente para parecer real
             setTimeout(() => {
                 icon.classList.remove('fa-spin');
                 if (selectedProject) {
-                    const randomSpamVal = (0.05 + Math.random() * 0.35);
-                    let label = "✅ APROVADO";
-                    if (randomSpamVal >= 0.10 && randomSpamVal < 0.30) {
-                        label = "⚠️ OTIMIZAR";
-                    } else if (randomSpamVal >= 0.30) {
-                        label = "❌ REMOVER";
+                    const savedUrl = localStorage.getItem(`gspread_url_${selectedProject.id}`);
+                    if (savedUrl) {
+                        syncGoogleSheets(savedUrl, selectedProject.id);
+                    } else {
+                        // Modo simulação padrão
+                        const randomSpamVal = (0.05 + Math.random() * 0.35);
+                        let label = "✅ APROVADO";
+                        if (randomSpamVal >= 0.10 && randomSpamVal < 0.30) { label = "⚠️ OTIMIZAR"; }
+                        else if (randomSpamVal >= 0.30) { label = "❌ REMOVER"; }
+
+                        const formattedSpamLabel = `${label} - ${randomSpamVal.toFixed(2)}%`;
+                        document.getElementById('metricSpam').innerText = randomSpamVal.toFixed(2) + "%";
+                        
+                        const badge = document.getElementById('dashStatusBadge');
+                        badge.innerText = formattedSpamLabel;
+                        badge.className = "text-xs font-black px-4 py-2 rounded-full border tracking-wider " + getBadgeColorClass(formattedSpamLabel);
+
+                        activeChart.data.datasets.forEach(dataset => {
+                            if (!dataset.label.includes('Teto')) {
+                                dataset.data = dataset.data.map(val => Math.min(0.55, Math.max(0.01, val * (0.9 + Math.random() * 0.2))));
+                            }
+                        });
+                        activeChart.update();
+                        buildComplementaryCharts(selectedProject);
                     }
-
-                    const formattedSpamLabel = `${label} - ${randomSpamVal.toFixed(2)}%`;
-                    document.getElementById('metricSpam').innerText = randomSpamVal.toFixed(2) + "%";
                     
-                    const badge = document.getElementById('dashStatusBadge');
-                    badge.innerText = formattedSpamLabel;
-                    badge.className = "text-xs font-black px-4 py-2 rounded-full border tracking-wider " + getBadgeColorClass(formattedSpamLabel);
-
-                    // Atualiza a hora da última atualização para o momento atual
                     const agora = new Date();
-                    const horaFormatada = agora.toLocaleDateString('pt-BR') + ", " + agora.toLocaleTimeString('pt-BR');
-                    document.getElementById('dashUpdateTime').innerText = horaFormatada;
-
-                    // Animar gráfico principal
-                    activeChart.data.datasets.forEach(dataset => {
-                        if (!dataset.label.includes('Teto')) {
-                            dataset.data = dataset.data.map(val => Math.min(0.55, Math.max(0.01, val * (0.9 + Math.random() * 0.2))));
-                        }
-                    });
-                    activeChart.update();
-
-                    // Animar e recarregar os novos gráficos dinamicamente
-                    buildComplementaryCharts(selectedProject);
+                    document.getElementById('dashUpdateTime').innerText = agora.toLocaleDateString('pt-BR') + ", " + agora.toLocaleTimeString('pt-BR');
                 }
-                showToast("Métricas atualizadas com sucesso!");
+                showToast("Métricas atualizadas!");
             }, 1200);
         }
 
-        // Toast de feedback
+        // Toasts
         function showToast(message) {
             const toast = document.getElementById('toast');
             const text = document.getElementById('toastText');
