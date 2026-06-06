@@ -20,21 +20,17 @@
         header {
             background-color: var(--navy); color: white; padding: 14px 28px; border-radius: 12px;
             display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
         }
-        .header-title h1 { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
-        .header-title p { font-size: 11px; color: #94A3B8; margin-top: 2px; }
+        .header-title h1 { font-size: 20px; font-weight: 800; }
         .btn-top { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: white; padding: 7px 14px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor: pointer; }
 
-        /* ESTILO DOS BOTÕES DE FILTRO */
+        /* BARRA DE BOTÕES */
         .date-bar { display: flex; justify-content: flex-end; gap: 8px; margin: 20px 0; flex-wrap: wrap; }
-        .f-btn { background: white; border: 1px solid var(--border); padding: 8px 18px; border-radius: 20px; font-size: 11.5px; color: var(--muted); cursor: pointer; font-weight: 500; transition: all 0.2s; }
-        .f-btn:hover { background: #f8fafc; }
-        .f-btn.active { background: #EEF2FF; color: #4F46E5; border: 1px solid #C7D2FE; font-weight: 700; }
+        .f-btn { background: white; border: 1px solid var(--border); padding: 8px 18px; border-radius: 20px; font-size: 11px; color: var(--muted); cursor: pointer; font-weight: 600; }
+        .f-btn.active { background: #EEF2FF; color: #4F46E5; border: 1px solid #C7D2FE; font-weight: 800; }
 
-        .section-label { font-size: 11px; font-weight: 800; color: #475569; margin: 24px 0 12px 0; text-transform: uppercase; }
         .grid-units { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .unit-card { background: white; border-radius: 12px; padding: 22px; border: 1px solid var(--border); cursor: pointer; position: relative; transition: all 0.2s; }
+        .unit-card { background: white; border-radius: 12px; padding: 22px; border: 1px solid var(--border); cursor: pointer; position: relative; }
         .unit-card.active.c404 { border: 2.5px solid var(--mint); }
         .unit-card.active.c2513 { border: 2.5px solid var(--red); }
         .pill-status { position: absolute; top: 22px; right: 22px; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; }
@@ -44,48 +40,44 @@
         
         .table-wrap { max-height: 350px; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
-        th { text-align: left; padding: 12px; background: #F8FAFC; position: sticky; top: 0; font-weight: 700; color: var(--muted); border-bottom: 1px solid var(--border); font-size: 10px; }
+        th { text-align: left; padding: 12px; background: #F8FAFC; position: sticky; top: 0; color: var(--muted); border-bottom: 1px solid var(--border); font-size: 10px; }
         td { padding: 12px; border-bottom: 1px solid var(--border); }
-        .st-badge { padding: 4px 8px; border-radius: 4px; font-weight: 800; font-size: 10px; text-transform: uppercase; }
+        .st-badge { padding: 4px 8px; border-radius: 4px; font-weight: 800; font-size: 10px; }
 
         #loader { position: fixed; inset: 0; background: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10000; font-weight: 800; color: var(--navy); }
         .spinner { width: 32px; height: 32px; border: 3px solid #f3f3f3; border-top: 3px solid var(--navy); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-<div id="loader"><div class="spinner"></div>SINCRONIZANDO DATA LAKES...</div>
+<div id="loader"><div class="spinner"></div>SINCRONIZANDO...</div>
 
 <div class="container">
     <header>
         <div class="header-title">
             <h1 id="top-h1">Geral / Projeto 404</h1>
-            <p>Métricas de Entregabilidade - Atualizado em <span id="time-now">--</span></p>
+            <p>Performance Operacional - Atualizado em <span id="time-now">--</span></p>
         </div>
         <button class="btn-top" onclick="location.reload()">🔄 ATUALIZAR</button>
     </header>
 
-    <!-- BOTÕES COM ONCLICK ADICIONADO -->
     <div class="date-bar">
-        <button class="f-btn" onclick="applyDateFilter('today', this)">Hoje</button>
-        <button class="f-btn" onclick="applyDateFilter('yesterday', this)">Ontem</button>
-        <button class="f-btn active" id="default-btn" onclick="applyDateFilter('7days', this)">Últimos 7 dias</button>
-        <button class="f-btn" onclick="applyDateFilter('30days', this)">Últimos 30 dias</button>
-        <button class="f-btn" onclick="applyDateFilter('90days', this)">Últimos 90 dias</button>
-        <button class="f-btn" onclick="applyDateFilter('month', this)">Mês até hoje</button>
-        <button class="f-btn" onclick="applyDateFilter('all', this)">Todo o histórico</button>
+        <button class="f-btn" onclick="runFilter('today', this)">Hoje</button>
+        <button class="f-btn" onclick="runFilter('yesterday', this)">Ontem</button>
+        <button class="f-btn" onclick="runFilter('7days', this)">Últimos 7 dias</button>
+        <button class="f-btn" onclick="runFilter('30days', this)">Últimos 30 dias</button>
+        <button class="f-btn active" id="btn-all" onclick="runFilter('all', this)">Todo o histórico</button>
     </div>
 
     <div class="grid-units">
         <div class="unit-card c404 active" id="card-404" onclick="setProj('404')">
             <h2>Geral / Projeto 404</h2>
-            <p id="count-404" style="font-size: 10px; color: var(--muted);">Auditando disparos...</p>
+            <p id="count-404" style="font-size: 10px; color: var(--muted);">Auditando...</p>
             <div class="pill-status" id="pill-404">--</div>
         </div>
         <div class="unit-card c2513" id="card-2513" onclick="setProj('2513')">
             <h2>Projeto 2513</h2>
-            <p id="count-2513" style="font-size: 10px; color: var(--muted);">Auditando disparos...</p>
+            <p id="count-2513" style="font-size: 10px; color: var(--muted);">Auditando...</p>
             <div class="pill-status" id="pill-2513">--</div>
         </div>
     </div>
@@ -96,7 +88,7 @@
             <div style="height: 320px;"><canvas id="mainChart"></canvas></div>
         </div>
         <div class="card-white">
-            <div style="font-size: 11px; font-weight: 800; margin-bottom: 20px;">LOGS DE DISPAROS</div>
+            <div style="font-size: 11px; font-weight: 800; margin-bottom: 20px;">DETALHAMENTO DE LOGS</div>
             <div class="table-wrap">
                 <table id="mainTable">
                     <thead>
@@ -114,7 +106,7 @@
     const gid = '372389848';
     
     let masterData = [];
-    let filteredData = [];
+    let currentFiltered = [];
     let currentProj = "404";
     let chartObj = null;
 
@@ -123,70 +115,54 @@
 
     function fetchData() {
         const query = new google.visualization.Query(`https://docs.google.com/spreadsheets/d/${ssId}/gviz/tq?tqx=out:json&gid=${gid}`);
-        query.send(handleResponse);
-    }
+        query.send(res => {
+            if (res.isError()) {
+                document.getElementById('loader').innerText = "Erro na Planilha.";
+                return;
+            }
+            const dt = res.getDataTable();
+            masterData = [];
+            for (let i = 0; i < dt.getNumberOfRows(); i++) {
+                const label = dt.getFormattedValue(i, 0); // Ex: "05/06/2026"
+                const p = label.split('/');
+                const dateObj = new Date(p[2], p[1]-1, p[0]); // Converte seguro
+                
+                let s = dt.getValue(i, 2);
+                if (s > 0 && s < 0.05) s *= 100;
 
-    function handleResponse(response) {
-        if (response.isError()) {
-            document.getElementById('loader').innerText = "Erro ao conectar.";
-            return;
-        }
-        const dt = response.getDataTable();
-        masterData = [];
-        for (let i = 0; i < dt.getNumberOfRows(); i++) {
-            const dateStr = dt.getFormattedValue(i, 0);
-            const p = dateStr.split('/');
-            const dateObj = new Date(p[2], p[1]-1, p[0]); // Converte DD/MM/YYYY para Objeto Date
+                masterData.push({
+                    label: label,
+                    date: dateObj,
+                    camp: String(dt.getValue(i, 1)),
+                    spam: parseFloat(s) || 0
+                });
+            }
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('time-now').innerText = new Date().toLocaleString();
             
-            let s = dt.getValue(i, 2);
-            if (s > 0 && s < 0.05) s *= 100;
-
-            masterData.push({
-                dataLabel: dateStr,
-                dataObj: dateObj,
-                camp: String(dt.getValue(i, 1)),
-                spam: parseFloat(s) || 0
-            });
-        }
-        document.getElementById('loader').style.display = 'none';
-        document.getElementById('time-now').innerText = new Date().toLocaleString();
-        
-        // Aplica o filtro inicial de 7 dias
-        applyDateFilter('7days', document.getElementById('default-btn'));
+            // SEMPRE INICIA COM TUDO PARA NÃO BUGAR
+            runFilter('all', document.getElementById('btn-all'));
+        });
     }
 
-    function applyDateFilter(period, btn) {
-        // Estilo visual
+    function runFilter(mode, btn) {
+        // Estilo dos botões
         document.querySelectorAll('.f-btn').forEach(b => b.classList.remove('active'));
         if(btn) btn.classList.add('active');
 
         const now = new Date();
-        now.setHours(23, 59, 59, 999);
-        let start = new Date();
-        start.setHours(0, 0, 0, 0);
+        const start = new Date();
 
-        if (period === 'yesterday') {
-            start.setDate(now.getDate() - 1);
-            now.setDate(now.getDate() - 1);
-        } else if (period === '7days') {
-            start.setDate(now.getDate() - 7);
-        } else if (period === '30days') {
-            start.setDate(now.getDate() - 30);
-        } else if (period === '90days') {
-            start.setDate(now.getDate() - 90);
-        } else if (period === 'month') {
-            start = new Date(now.getFullYear(), now.getMonth(), 1);
-        } else if (period === 'all') {
-            start = new Date(2000, 0, 1);
+        if (mode === 'all') {
+            currentFiltered = [...masterData];
+        } else {
+            if (mode === 'today') start.setHours(0,0,0,0);
+            if (mode === 'yesterday') { start.setDate(now.getDate() - 1); start.setHours(0,0,0,0); now.setDate(now.getDate() - 1); now.setHours(23,59,59); }
+            if (mode === '7days') start.setDate(now.getDate() - 7);
+            if (mode === '30days') start.setDate(now.getDate() - 30);
+            
+            currentFiltered = masterData.filter(d => d.date >= start && d.date <= now);
         }
-
-        filteredData = masterData.filter(d => d.dataObj >= start && d.dataObj <= now);
-        
-        // Se o filtro resultar em vazio (ex: se estamos em 2026 e os dados são de 2025), avisa
-        if(filteredData.length === 0 && period !== 'all') {
-            console.log("Nenhum dado encontrado para este período, mostrando tudo.");
-        }
-        
         render();
     }
 
@@ -194,16 +170,15 @@
         currentProj = id;
         document.querySelectorAll('.unit-card').forEach(c => c.classList.remove('active'));
         document.getElementById('card-'+id).classList.add('active');
-        document.getElementById('top-h1').innerText = id === '404' ? "Geral / Projeto 404" : "Projeto 2513";
         render();
     }
 
     function render() {
-        // Cards das Unidades
+        // Atualiza Cards
         ["404", "2513"].forEach(id => {
-            const list = filteredData.filter(d => d.camp.includes(id));
+            const list = currentFiltered.filter(d => d.camp.includes(id));
             const avg = list.length ? list.reduce((a,b)=>a+b.spam, 0)/list.length : 0;
-            document.getElementById('count-'+id).innerText = `${list.length} disparos no período`;
+            document.getElementById('count-'+id).innerText = `${list.length} disparos auditados`;
             const p = document.getElementById('pill-'+id);
             const ok = avg < 0.3;
             p.innerText = `${ok ? 'SAUDÁVEL':'CRÍTICO'} (${avg.toFixed(2)}%)`;
@@ -211,21 +186,19 @@
             p.style.background = ok ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)";
         });
 
-        // Dados do Projeto Ativo
-        const activeList = filteredData.filter(d => d.camp.includes(currentProj));
+        // Dados do Projeto Atual
+        const activeList = currentFiltered.filter(d => d.camp.includes(currentProj));
 
         // Tabela
         const tbody = document.querySelector('#mainTable tbody');
-        tbody.innerHTML = activeList.slice().reverse().map(d => {
-            const color = d.spam < 0.3 ? '#166534' : '#991B1B';
-            const bg = d.spam < 0.3 ? '#DCFCE7' : '#FEE2E2';
-            return `<tr>
-                <td>${d.dataLabel}</td>
+        tbody.innerHTML = activeList.slice().reverse().map(d => `
+            <tr>
+                <td>${d.label}</td>
                 <td style="color:var(--teal); font-weight:700">${d.camp}</td>
                 <td style="font-weight:800">${d.spam.toFixed(2)}%</td>
-                <td><span class="st-badge" style="background:${bg}; color:${color}">${d.spam < 0.3 ? 'OK' : 'ALERTA'}</span></td>
-            </tr>`;
-        }).join('');
+                <td><span class="st-badge" style="background:${d.spam < 0.3 ? '#DCFCE7':'#FEE2E2'}; color:${d.spam < 0.3 ? '#166534':'#991B1B'}">${d.spam < 0.3 ? 'OK' : 'ALERTA'}</span></td>
+            </tr>
+        `).join('');
 
         // Gráfico
         if(chartObj) chartObj.destroy();
@@ -233,11 +206,10 @@
         chartObj = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: activeList.map(d => d.dataLabel),
+                labels: activeList.map(d => d.label),
                 datasets: [{ 
                     label: 'Spam %', data: activeList.map(d => d.spam), 
-                    borderColor: '#0D9488', backgroundColor: 'rgba(13, 148, 136, 0.05)', 
-                    fill: true, tension: 0.3, pointRadius: 4
+                    borderColor: '#0D9488', backgroundColor: 'rgba(13,148,136,0.05)', fill: true, tension: 0.3
                 }]
             },
             options: { responsive: true, maintainAspectRatio: false }
