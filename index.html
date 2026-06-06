@@ -49,11 +49,11 @@
                         Hub de Projetos
                     </h1>
                     <p class="text-slate-400 text-sm md:text-base mt-1">
-                        Selecione uma unidade operacional para auditar reputação e entregabilidade (Dados Sincronizados e Reais)
+                        Selecione uma unidade operacional para auditar reputação e entregabilidade
                     </p>
                 </div>
                 
-                <!-- Botão Central X -->
+                <!-- Botão Central X (fechar/resetar) -->
                 <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden lg:block">
                     <button class="bg-[#173052] hover:bg-[#1e3d68] text-white w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200" onclick="showToast('Home reiniciada')">
                         <i class="fa-solid fa-xmark text-lg"></i>
@@ -103,9 +103,14 @@
                         <span id="syncIndicator" class="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#0b2240] hidden"></span>
                     </button>
                     <!-- Status Badge -->
-                    <span id="dashStatusBadge" class="bg-[#f3a83b]/20 text-[#f3a83b] text-xs font-black px-4 py-2 rounded-full border tracking-wider">
+                    <span id="dashStatusBadge" class="bg-[#f3a83b]/20 text-[#f3a83b] text-xs font-black px-4 py-2 rounded-full border border-[#f3a83b]/30 tracking-wider">
                         ⚠️ OTIMIZAR - 0.18%
                     </span>
+                    <!-- Atualizar -->
+                    <button class="flex items-center gap-2 border border-slate-700 hover:bg-[#173052] px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 text-slate-300 hover:text-white" onclick="triggerRefresh()">
+                        <i class="fa-solid fa-arrows-rotate" id="refreshIconDash"></i>
+                        <span>ATUALIZAR</span>
+                    </button>
                     <!-- Sair -->
                     <button class="flex items-center gap-2 border border-slate-700 hover:bg-[#173052] px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 text-slate-300 hover:text-white" onclick="backToHub()">
                         <i class="fa-solid fa-right-from-bracket"></i>
@@ -156,7 +161,7 @@
                     <div class="flex items-center justify-between">
                         <h2 class="text-sm font-extrabold text-[#0b2240] tracking-wider uppercase flex items-center gap-2">
                             <span class="w-1.5 h-4 bg-indigo-500 rounded-full"></span>
-                            SPAM POR IP (%) — LINHA DE HISTÓRICO (CAMPANHAS COMPLETAS)
+                            SPAM POR IP (%) — LINHA DE HISTÓRICO
                         </h2>
                     </div>
                     
@@ -166,11 +171,11 @@
                     </div>
                 </section>
 
-                <!-- COLUNA DA DIREITA: TABELA DE HISTÓRICO DIÁRIO (Pivoteada) -->
+                <!-- COLUNA DA DIREITA: TABELA DE HISTÓRICO DIÁRIO -->
                 <section class="xl:col-span-6 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-4 h-full">
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                         <h2 class="text-sm font-extrabold text-[#0b2240] tracking-wider uppercase flex items-center gap-2">
-                            <span>📋</span> HISTÓRICO DIÁRIO PIVOTEADO
+                            <span>📋</span> HISTÓRICO DIÁRIO
                         </h2>
                         
                         <!-- Barra de Pesquisa e Botão Exportar CSV -->
@@ -215,11 +220,11 @@
                     </div>
                 </section>
 
-                <!-- NOVO: GRÁFICO DE LINHA - TAXA DE SPAM POR DIA (MÉDIA REAL) -->
+                <!-- GRÁFICO DE LINHA - TAXA DE SPAM POR DIA (MÉDIA) -->
                 <section class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-4">
                     <h2 class="text-sm font-extrabold text-[#0b2240] tracking-wider uppercase flex items-center gap-2">
                         <span class="w-1.5 h-4 bg-amber-500 rounded-full"></span>
-                        📈 Taxa Média de Spam por Dia (%)
+                        📈 Taxa de Spam por Dia (%)
                     </h2>
                     <div class="relative w-full h-[320px]">
                         <canvas id="dailySpamLineChart"></canvas>
@@ -315,545 +320,59 @@
 
     <!-- ================= SISTEMA DE DADOS E DINÂMICA (JAVASCRIPT) ================= -->
     <script>
-        // BACKUP COMPLETO DOS DADOS DA PLANILHA ENVIADOS PELO USUÁRIO (Evita falhas por CORS/offline)
-        const GOOGLE_SHEETS_RAW_BACKUP = `
-        22 de nov. de 2025	0,25%	2025-11-22	0,25
-        22 de nov. de 2025	0d7cf159-4278-4a88-b62e-772942406dd8	0,14%	2025-11-22	0,14
-        22 de nov. de 2025	2120ad26-2cfa-4c88-a039-80f9ecab57aa	0,09%	2025-11-22	0,09
-        22 de nov. de 2025	2755182a-227c-4034-a87c-4d423c703a27	0,00%	2025-11-22	0
-        22 de nov. de 2025	2d986c0c-923f-44a8-81d6-ba07b04b8a3d	0,32%	2025-11-22	0,32
-        22 de nov. de 2025	3a14db43-be8f-449b-b24c-fe279caa6a3b	0,10%	2025-11-22	0,1
-        22 de nov. de 2025	3b263ee0-364e-4fa5-a0d0-2ccbcda75e68	0,16%	2025-11-22	0,16
-        22 de nov. de 2025	5f41b383-3cce-44f0-a836-c01b79b58293	0,10%	2025-11-22	0,1
-        22 de nov. de 2025	7558d796-8c9d-4dda-93fe-c36bc4837d7a	0,00%	2025-11-22	0
-        22 de nov. de 2025	81cafaa4-c70b-48c8-b8f6-06765c59d31c	0,20%	2025-11-22	0,2
-        22 de nov. de 2025	9413ffce-87c0-4953-993a-9bac578afd6a	0,64%	2025-11-22	0,64
-        22 de nov. de 2025	962c4627-57b3-465c-959a-a89893435559	0,66%	2025-11-22	0,66
-        22 de nov. de 2025	a1f8c14d-524d-4aa5-865e-eee78ee39689	0,11%	2025-11-22	0,11
-        22 de nov. de 2025	aafbbcc7-dd3b-4c56-8ba9-4bfd7cf4d2ac	0,19%	2025-11-22	0,19
-        22 de nov. de 2025	c0a9f424-314e-45b0-8c36-e345376e10f5	1,89%	2025-11-22	1,89
-        22 de nov. de 2025	ff05369f-323b-4428-86f7-c5e8bc0ba2e9	0,07%	2025-11-22	0,07
-        23 de nov. de 2025	0,22%	2025-11-23	0,22
-        23 de nov. de 2025	016e798f-0471-42d5-ac10-c21054d5ea8a	0,15%	2025-11-23	0,15
-        23 de nov. de 2025	27ff4ea4-3d7a-4b10-b1e0-87afeec7b64c	0,13%	2025-11-23	0,13
-        23 de nov. de 2025	2bdacbf3-fc20-4bec-acd8-14a8af824e49	0,00%	2025-11-23	0
-        23 de nov. de 2025	2bdb0089-d67b-4153-9403-3552d607ffbf	0,04%	2025-11-23	0,04
-        23 de nov. de 2025	46337f61-4617-4334-bd79-0db2019a4091	0,18%	2025-11-23	0,18
-        23 de nov. de 2025	4baa41c0-2ed4-4481-9f60-dd7334703c10	0,16%	2025-11-23	0,16
-        23 de nov. de 2025	4bded479-d099-460a-910f-142e10e04737	0,15%	2025-11-23	0,15
-        23 de nov. de 2025	4d3b113a-c182-47ab-8c9e-4f0b692a4cd2	0,10%	2025-11-23	0,1
-        23 de nov. de 2025	5824e5e3-4487-434d-a227-01f83dbc51a9	0,59%	2025-11-23	0,59
-        23 de nov. de 2025	5d2d4909-a61f-4a09-a520-4e678aa50c63	0,23%	2025-11-23	0,23
-        23 de nov. de 2025	9717ebe5-bb96-43f0-91d9-42a6038bd767	0,20%	2025-11-23	0,2
-        23 de nov. de 2025	9d76f625-f5d4-490a-b4da-f7f2f9a0e0da	0,00%	2025-11-23	0
-        23 de nov. de 2025	a61a4214-a590-4143-b7e6-2ab535bb419d	1,02%	2025-11-23	1,02
-        23 de nov. de 2025	a9426769-57cd-4018-8e32-27b83473ae9c	1,36%	2025-11-23	1,36
-        23 de nov. de 2025	cf623ff8-feeb-43d6-80a7-aab4dbfb565e	0,32%	2025-11-23	0,32
-        23 de nov. de 2025	fa2e25c6-4617-4a49-bbcc-007f739ded3a	0,26%	2025-11-23	0,26
-        24 de nov. de 2025	0,12%	2025-11-24	0,12
-        24 de nov. de 2025	0b85576a-9ce6-43ae-8927-bf65c5bde05d	0,10%	2025-11-24	0,1
-        24 de nov. de 2025	1988b458-d86e-4770-8d39-e05b1d7b5dc4	0,07%	2025-11-24	0,07
-        24 de nov. de 2025	1d67a97f-be47-4375-b13d-6cab750a34a1	0,06%	2025-11-24	0,06
-        24 de nov. de 2025	2c47d229-23ea-4fc8-b861-db745824ef44	0,16%	2025-11-24	0,16
-        24 de nov. de 2025	2d636ab3-189f-492c-aa24-8ba2a1485e72	0,08%	2025-11-24	0,08
-        24 de nov. de 2025	368cb33c-d778-4658-b20f-0480dbebbdfa	0,06%	2025-11-24	0,06
-        24 de nov. de 2025	3cb56aba-9059-49c1-9339-0478c76f2690	0,12%	2025-11-24	0,12
-        24 de nov. de 2025	436604a0-f399-41ea-b8d9-6686d83c5e4c	0,11%	2025-11-24	0,11
-        24 de nov. de 2025	5568d943-8568-442c-a923-f034da0e59b5	0,20%	2025-11-24	0,2
-        24 de nov. de 2025	584d9632-22fb-4e7b-9f65-7e78619d0a86	0,79%	2025-11-24	0,79
-        24 de nov. de 2025	5f90a7cd-ea37-48c0-a655-bdf51b6b0e5c	0,13%	2025-11-24	0,13
-        24 de nov. de 2025	61ac61b7-5c6c-4579-b9b8-0f4c564687ab	0,08%	2025-11-24	0,08
-        24 de nov. de 2025	69da6e5a-1306-446a-ae3e-8526f4205924	0,06%	2025-11-24	0,06
-        24 de nov. de 2025	8b6b9f69-7517-4511-90c5-8e1f3de42b51	0,14%	2025-11-24	0,14
-        24 de nov. de 2025	9d289140-3b3e-4b38-bfcf-abc11158cf0a	0,43%	2025-11-24	0,43
-        24 de nov. de 2025	ab3259a9-17f5-4c83-ac3c-34dcb06a9dcd	0,09%	2025-11-24	0,09
-        24 de nov. de 2025	ae40735b-0dd7-40d9-a36a-741dda0bc229	0,09%	2025-11-24	0,09
-        24 de nov. de 2025	c4b26cfd-0fdd-468d-ab29-cac42671cd0c	0,14%	2025-11-24	0,14
-        24 de nov. de 2025	campaign-1c392bec-d689-4728-b192-87f7a465e2f6	0,06%	2025-11-24	0,06
-        24 de nov. de 2025	campaign-53292a07-3b1b-4a0a-b4f2-12a18398db43	0,13%	2025-11-24	0,13
-        24 de nov. de 2025	campaign-6bc85b4e-761a-4306-9b8d-97e02423c599	0,09%	2025-11-24	0,09
-        24 de nov. de 2025	campaign-c4b26cfd-0fdd-468d-ab29-cac42671cd0c	0,09%	2025-11-24	0,09
-        24 de nov. de 2025	f0ddb0b0-b276-4cd6-857a-46bfc8c65517	0,00%	2025-11-24	0
-        24 de nov. de 2025	f88bc69b-dd9a-465b-945c-afe6b496e5f6	0,04%	2025-11-24	0,04
-        24 de nov. de 2025	fd34d939-a81b-47b9-a472-dd43af602664	0,09%	2025-11-24	0,09
-        24 de nov. de 2025	project-403	0,29%	2025-11-24	0,29
-        24 de nov. de 2025	project-404	0,11%	2025-11-24	0,11
-        25 de nov. de 2025	project-403	0,33%	2025-11-25	0,33
-        25 de nov. de 2025	project-404	0,10%	2025-11-25	0,1
-        26 de nov. de 2025	project-403	0,25%	2025-11-26	0,25
-        26 de nov. de 2025	project-404	0,13%	2025-11-26	0,13
-        27 de nov. de 2025	project-403	0,45%	2025-11-27	0,45
-        27 de nov. de 2025	project-404	0,17%	2025-11-27	0,17
-        28 de nov. de 2025	broad-404-broadcast-mx-sol-634-28-11-7h	0,14%	2025-11-28	0,14
-        28 de nov. de 2025	broad-404-broadcast-mx-sol-635-28-11-8h	0,38%	2025-11-28	0,38
-        28 de nov. de 2025	broad-404-broadcast-mx-sol-636-28-11-9h	0,22%	2025-11-28	0,22
-        28 de nov. de 2025	broad-404-broadcast-mx-sol-637-28-11-10h	0,49%	2025-11-28	0,49
-        28 de nov. de 2025	broad-404-broadcast-mx-sol-638-28-11-11h	0,20%	2025-11-28	0,2
-        28 de nov. de 2025	broad-404-broadcast-mx-sol-639-28-11-12h	0,24%	2025-11-28	0,24
-        28 de nov. de 2025	broad-404-broadcast-mx-sol-640-28-11-13h	0,18%	2025-11-28	0,18
-        28 de nov. de 2025	broad-404-broadcast-mx-sol-641-28-11-14h	0,36%	2025-11-28	0,36
-        28 de nov. de 2025	broad-404-broadcast-mx-sol-642-28-11-15h	0,20%	2025-11-28	0,2
-        28 de nov. de 2025	broad-404-broadcast-mx-sol-643-28-11-16h	0,24%	2025-11-28	0,24
-        28 de nov. de 2025	broad-404-broadcast-mx-sol-644-28-11-17h	0,14%	2025-11-28	0,14
-        28 de nov. de 2025	proj-403	0,43%	2025-11-28	0,43
-        28 de nov. de 2025	proj-404	0,22%	2025-11-28	0,22
-        28 de nov. de 2025	project-403	0,00%	2025-11-28	0
-        28 de nov. de 2025	project-404	0,26%	2025-11-28	0,26
-        29 de nov. de 2025	auto-404-automation-email	0,65%	2025-11-29	0,65
-        29 de nov. de 2025	broad-404-broadcast-mx-sol-645-28-11-18h	0,16%	2025-11-29	0,16
-        29 de nov. de 2025	broad-404-broadcast-mx-sol-646-28-11-19h	0,16%	2025-11-29	0,16
-        29 de nov. de 2025	broad-404-broadcast-mx-sol-647-28-11-20h	0,14%	2025-11-29	0,14
-        29 de nov. de 2025	broad-404-broadcast-mx-sol-648-28-11-21h	0,13%	2025-11-29	0,13
-        29 de nov. de 2025	broad-404-broadcast-mx-sol-649-28-11-22h	0,13%	2025-11-29	0,13
-        29 de nov. de 2025	broad-404-broadcast-mx-sol-650-28-11-23h	0,12%	2025-11-29	0,12
-        29 de nov. de 2025	broad-404-broadcast-mx-sol-651-29-11-5h	0,13%	2025-11-29	0,13
-        29 de nov. de 2025	broad-404-broadcast-mx-sol-652-29-11-6h	0,10%	2025-11-29	0,1
-        29 de nov. de 2025	broad-404-broadcast-mx-sol-653-29-11-7h	0,26%	2025-11-29	0,26
-        29 de nov. de 2025	broad-404-broadcast-mx-sol-654-29-11-8h	0,14%	2025-11-29	0,14
-        29 de nov. de 2025	broad-404-broadcast-mx-sol-655-29-11-9h	0,13%	2025-11-29	0,13
-        29 de nov. de 2025	broad-404-broadcast-mx-sol-656-29-11-10h	0,10%	2025-11-29	0,1
-        29 de nov. de 2025	broad-404-broadcast-mx-sol-657-29-11-11h	0,13%	2025-11-29	0,13
-        29 de nov. de 2025	broad-404-broadcast-mx-sol-658-29-11-12h	0,14%	2025-11-29	0,14
-        29 de nov. de 2025	broad-404-broadcast-mx-sol-659-29-11-13h	0,26%	2025-11-29	0,26
-        29 de nov. de 2025	broad-404-broadcast-mx-sol-660-29-11-14h	0,12%	2025-11-29	0,12
-        29 de nov. de 2025	broad-404-broadcast-mx-sol-661-29-11-15h	0,52%	2025-11-29	0,52
-        29 de nov. de 2025	broad-404-broadcast-mx-sol-662-29-11-16h	0,12%	2025-11-29	0,12
-        29 de nov. de 2025	broad-404-broadcast-mx-sol-663-29-11-17h	0,39%	2025-11-29	0,39
-        29 de nov. de 2025	proj-403	0,28%	2025-11-29	0,28
-        29 de nov. de 2025	proj-404	0,15%	2025-11-29	0,15
-        30 de nov. de 2025	proj-403	0,26%	2025-11-30	0,26
-        30 de nov. de 2025	proj-404	0,13%	2025-11-30	0,13
-        01 de dez. de 2025	proj-403	0,65%	2025-12-01	0,65
-        01 de dez. de 2025	proj-404	0,13%	2025-12-01	0,13
-        02 de dez. de 2025	proj-403	0,49%	2025-12-02	0,49
-        02 de dez. de 2025	proj-404	0,16%	2025-12-02	0,16
-        03 de dez. de 2025	proj-403	0,35%	2025-12-03	0,35
-        03 de dez. de 2025	proj-404	0,14%	2025-12-03	0,14
-        04 de dez. de 2025	proj-403	0,19%	2025-12-04	0,19
-        04 de dez. de 2025	proj-404	0,13%	2025-12-04	0,13
-        05 de dez. de 2025	proj-403	0,31%	2025-12-05	0,31
-        05 de dez. de 2025	proj-404	0,11%	2025-12-05	0,11
-        06 de dez. de 2025	proj-403	0,28%	2025-12-06	0,28
-        06 de dez. de 2025	proj-404	0,17%	2025-12-06	0,17
-        07 de dez. de 2025	proj-403	0,18%	2025-12-07	0,18
-        07 de dez. de 2025	proj-404	0,17%	2025-12-07	0,17
-        08 de dez. de 2025	proj-403	0,14%	2025-12-08	0,14
-        08 de dez. de 2025	proj-404	0,22%	2025-12-08	0,22
-        09 de dez. de 2025	proj-403	0,28%	2025-12-09	0,28
-        09 de dez. de 2025	proj-404	0,18%	2025-12-09	0,18
-        10 de dez. de 2025	proj-403	0,26%	2025-12-10	0,26
-        10 de dez. de 2025	proj-404	0,24%	2025-12-10	0,24
-        11 de dez. de 2025	proj-403	0,14%	2025-12-11	0,14
-        11 de dez. de 2025	proj-404	0,21%	2025-12-11	0,21
-        12 de dez. de 2025	proj-403	0,26%	2025-12-12	0,26
-        12 de dez. de 2025	proj-404	0,21%	2025-12-12	0,21
-        13 de dez. de 2025	proj-403	0,11%	2025-12-13	0,11
-        13 de dez. de 2025	proj-404	0,14%	2025-12-13	0,14
-        14 de dez. de 2025	proj-403	0,35%	2025-12-14	0,35
-        14 de dez. de 2025	proj-404	0,18%	2025-12-14	0,18
-        15 de dez. de 2025	proj-403	0,34%	2025-12-15	0,34
-        15 de dez. de 2025	proj-404	0,17%	2025-12-15	0,17
-        16 de dez. de 2025	proj-403	1,10%	2025-12-16	1,1
-        16 de dez. de 2025	proj-404	0,19%	2025-12-16	0,19
-        17 de dez. de 2025	proj-403	0,88%	2025-12-17	0,88
-        17 de dez. de 2025	proj-404	0,29%	2025-12-17	0,29
-        18 de dez. de 2025	proj-403	0,98%	2025-12-18	0,98
-        18 de dez. de 2025	proj-404	0,16%	2025-12-18	0,16
-        19 de dez. de 2025	proj-403	0,76%	2025-12-19	0,76
-        19 de dez. de 2025	proj-404	0,18%	2025-12-19	0,18
-        20 de dez. de 2025	proj-403	1,13%	2025-12-20	1,13
-        20 de dez. de 2025	proj-404	0,16%	2025-12-20	0,16
-        21 de dez. de 2025	proj-403	1,05%	2025-12-21	1,05
-        21 de dez. de 2025	proj-404	0,17%	2025-12-21	0,17
-        22 de dez. de 2025	proj-403	0,90%	2025-12-22	0,9
-        22 de dez. de 2025	proj-404	0,19%	2025-12-22	0,19
-        23 de dez. de 2025	proj-403	0,72%	2025-12-23	0,72
-        23 de dez. de 2025	proj-404	0,27%	2025-12-23	0,27
-        24 de dez. de 2025	proj-403	0,29%	2025-12-24	0,29
-        24 de dez. de 2025	proj-404	0,22%	2025-12-24	0,22
-        25 de dez. de 2025	proj-403	0,40%	2025-12-25	0,4
-        25 de dez. de 2025	proj-404	0,23%	2025-12-25	0,23
-        26 de dez. de 2025	proj-403	0,32%	2025-12-26	0,32
-        26 de dez. de 2025	proj-404	0,14%	2025-12-26	0,14
-        27 de dez. de 2025	proj-403	0,77%	2025-12-27	0,77
-        27 de dez. de 2025	proj-404	0,09%	2025-12-27	0,09
-        28 de dez. de 2025	proj-403	0,87%	2025-12-28	0,87
-        28 de dez. de 2025	proj-404	0,11%	2025-12-28	0,11
-        29 de dez. de 2025	proj-403	0,61%	2025-12-29	0,61
-        29 de dez. de 2025	proj-404	0,32%	2025-12-29	0,32
-        30 de dez. de 2025	proj-403	0,87%	2025-12-30	0,87
-        30 de dez. de 2025	proj-404	0,28%	2025-12-30	0,28
-        31 de dez. de 2025	proj-403	0,54%	2025-12-31	0,54
-        31 de dez. de 2025	proj-404	0,23%	2025-12-31	0,23
-        01 de jan. de 2026	proj-403	0,26%	2026-01-01	0,26
-        01 de jan. de 2026	proj-404	0,19%	2026-01-01	0,19
-        02 de jan. de 2026	proj-403	0,29%	2026-01-02	0,29
-        02 de jan. de 2026	proj-404	0,45%	2026-01-02	0,45
-        03 de jan. de 2026	proj-403	0,26%	2026-01-03	0,26
-        03 de jan. de 2026	proj-404	0,33%	2026-01-03	0,33
-        04 de jan. de 2026	proj-403	0,23%	2026-01-04	0,23
-        04 de jan. de 2026	proj-404	0,15%	2026-01-04	0,15
-        05 de jan. de 2026	proj-403	0,71%	2026-01-05	0,71
-        05 de jan. de 2026	proj-404	0,26%	2026-01-05	0,26
-        06 de jan. de 2026	proj-403	0,93%	2026-01-06	0,93
-        06 de jan. de 2026	proj-404	0,16%	2026-01-06	0,16
-        07 de jan. de 2026	proj-403	0,32%	2026-01-07	0,32
-        07 de jan. de 2026	proj-404	0,38%	2026-01-07	0,38
-        08 de jan. de 2026	proj-403	0,34%	2026-01-08	0,34
-        08 de jan. de 2026	proj-404	0,48%	2026-01-08	0,48
-        09 de jan. de 2026	proj-403	0,31%	2026-01-09	0,31
-        09 de jan. de 2026	proj-404	0,24%	2026-01-09	0,24
-        10 de jan. de 2026	proj-403	0,20%	2026-01-10	0,2
-        10 de jan. de 2026	proj-404	0,13%	2026-01-10	0,13
-        11 de jan. de 2026	proj-403	0,15%	2026-01-11	0,15
-        11 de jan. de 2026	proj-404	0,34%	2026-01-11	0,34
-        12 de jan. de 2026	proj-403	0,27%	2026-01-12	0,27
-        12 de jan. de 2026	proj-404	0,41%	2026-01-12	0,41
-        13 de jan. de 2026	proj-403	0,44%	2026-01-13	0,44
-        13 de jan. de 2026	proj-404	0,21%	2026-01-13	0,21
-        14 de jan. de 2026	proj-403	0,32%	2026-01-14	0,32
-        14 de jan. de 2026	proj-404	0,28%	2026-01-14	0,28
-        15 de jan. de 2026	proj-403	1,09%	2026-01-15	1,09
-        15 de jan. de 2026	proj-404	0,35%	2026-01-15	0,35
-        16 de jan. de 2026	proj-403	0,60%	2026-01-16	0,6
-        16 de jan. de 2026	proj-404	0,38%	2026-01-16	0,38
-        17 de jan. de 2026	proj-403	0,70%	2026-01-17	0,7
-        17 de jan. de 2026	proj-404	0,26%	2026-01-17	0,26
-        18 de jan. de 2026	proj-403	0,58%	2026-01-18	0,58
-        18 de jan. de 2026	proj-404	0,40%	2026-01-18	0,4
-        19 de jan. de 2026	proj-403	0,56%	2026-01-19	0,56
-        19 de jan. de 2026	proj-404	0,21%	2026-01-19	0,21
-        20 de jan. de 2026	proj-403	0,34%	2026-01-20	0,34
-        20 de jan. de 2026	proj-404	0,20%	2026-01-20	0,2
-        21 de jan. de 2026	proj-403	0,46%	2026-01-21	0,46
-        21 de jan. de 2026	proj-404	0,15%	2026-01-21	0,15
-        22 de jan. de 2026	proj-403	0,34%	2026-01-22	0,34
-        22 de jan. de 2026	proj-404	0,19%	2026-01-22	0,19
-        23 de jan. de 2026	proj-403	0,00%	2026-01-23	0
-        23 de jan. de 2026	proj-404	0,17%	2026-01-23	0,17
-        24 de jan. de 2026	proj-403	0,16%	2026-01-24	0,16
-        24 de jan. de 2026	proj-404	0,08%	2026-01-24	0,08
-        26 de jan. de 2026	proj-403	0,42%	2026-01-26	0,42
-        26 de jan. de 2026	proj-404	0,29%	2026-01-26	0,29
-        27 de jan. de 2026	proj-403	0,42%	2026-01-27	0,42
-        27 de jan. de 2026	proj-404	0,32%	2026-01-27	0,32
-        28 de jan. de 2026	proj-403	0,57%	2026-01-28	0,57
-        28 de jan. de 2026	proj-404	0,21%	2026-01-28	0,21
-        29 de jan. de 2026	proj-403	0,71%	2026-01-29	0,71
-        29 de jan. de 2026	proj-404	0,28%	2026-01-29	0,28
-        30 de jan. de 2026	proj-403	0,24%	2026-01-30	0,24
-        30 de jan. de 2026	proj-404	0,23%	2026-01-30	0,23
-        31 de jan. de 2026	proj-404	0,14%	2026-01-31	0,14
-        01 de fev. de 2026	proj-403	0,34%	2026-02-01	0,34
-        01 de fev. de 2026	proj-404	0,22%	2026-02-01	0,22
-        02 de fev. de 2026	proj-403	0,26%	2026-02-02	0,26
-        02 de fev. de 2026	proj-404	0,15%	2026-02-02	0,15
-        03 de fev. de 2026	proj-403	0,81%	2026-02-03	0,81
-        03 de fev. de 2026	proj-404	0,13%	2026-02-03	0,13
-        04 de fev. de 2026	proj-403	0,17%	2026-02-04	0,17
-        04 de fev. de 2026	proj-404	0,13%	2026-02-04	0,13
-        05 de fev. de 2026	proj-403	0,00%	2026-02-05	0
-        05 de fev. de 2026	proj-404	0,16%	2026-02-05	0,16
-        06 de fev. de 2026	proj-404	0,22%	2026-02-06	0,22
-        07 de fev. de 2026	proj-404	0,22%	2026-02-07	0,22
-        08 de fev. de 2026	proj-404	0,10%	2026-02-08	0,1
-        09 de fev. de 2026	proj-404	0,15%	2026-02-09	0,15
-        10 de fev. de 2026	proj-404	0,16%	2026-02-10	0,16
-        11 de fev. de 2026	proj-404	0,37%	2026-02-11	0,37
-        12 de fev. de 2026	proj-404	0,35%	2026-02-12	0,35
-        13 de fev. de 2026	proj-404	0,14%	2026-02-13	0,14
-        14 de fev. de 2026	proj-404	0,09%	2026-02-14	0,09
-        15 de fev. de 2026	proj-404	0,09%	2026-02-15	0,09
-        16 de fev. de 2026	proj-404	0,16%	2026-02-16	0,16
-        17 de fev. de 2026	proj-404	0,20%	2026-02-17	0,2
-        18 de fev. de 2026	proj-404	0,14%	2026-02-18	0,14
-        19 de fev. de 2026	proj-404	0,18%	2026-02-19	0,18
-        20 de fev. de 2026	proj-404	0,17%	2026-02-20	0,17
-        21 de fev. de 2026	proj-404	0,25%	2026-02-21	0,25
-        22 de fev. de 2026	proj-404	0,29%	2026-02-22	0,29
-        23 de fev. de 2026	proj-404	0,13%	2026-02-23	0,13
-        24 de fev. de 2026	proj-404	0,13%	2026-02-24	0,13
-        25 de fev. de 2026	proj-404	0,17%	2026-02-25	0,17
-        26 de fev. de 2026	proj-404	0,18%	2026-02-26	0,18
-        27 de fev. de 2026	proj-404	0,25%	2026-02-27	0,25
-        28 de fev. de 2026	proj-404	0,31%	2026-02-28	0,31
-        01 de mar. de 2026	proj-404	0,42%	2026-03-01	0,42
-        02 de mar. de 2026	proj-404	0,24%	2026-03-02	0,24
-        03 de mar. de 2026	proj-404	0,22%	2026-03-03	0,22
-        04 de mar. de 2026	proj-404	0,27%	2026-03-04	0,27
-        05 de mar. de 2026	proj-404	0,27%	2026-03-05	0,27
-        06 de mar. de 2026	proj-404	0,52%	2026-03-06	0,52
-        07 de mar. de 2026	proj-404	0,30%	2026-03-07	0,3
-        08 de mar. de 2026	proj-404	0,41%	2026-03-08	0,41
-        09 de mar. de 2026	proj-404	0,49%	2026-03-09	0,49
-        10 de mar. de 2026	proj-404	0,39%	2026-03-10	0,39
-        11 de mar. de 2026	proj-404	0,50%	2026-03-11	0,5
-        12 de mar. de 2026	proj-404	0,29%	2026-03-12	0,29
-        13 de mar. de 2026	proj-404	0,38%	2026-03-13	0,38
-        15 de mar. de 2026	proj-404	0,57%	2026-03-15	0,57
-        16 de mar. de 2026	proj-403	1,10%	2026-03-16	1,1
-        16 de mar. de 2026	proj-404	0,47%	2026-03-16	0,47
-        17 de mar. de 2026	proj-403	0,20%	2026-03-17	0,2
-        17 de mar. de 2026	proj-404	0,54%	2026-03-17	0,54
-        18 de mar. de 2026	proj-403	1,14%	2026-03-18	1,14
-        18 de mar. de 2026	proj-404	0,37%	2026-03-18	0,37
-        19 de mar. de 2026	proj-403	0,41%	2026-03-19	0,41
-        19 de mar. de 2026	proj-404	0,47%	2026-03-19	0,47
-        20 de mar. de 2026	proj-403	0,00%	2026-03-20	0
-        20 de mar. de 2026	proj-404	0,33%	2026-03-20	0,33
-        22 de mar. de 2026	proj-403	0,00%	2026-03-22	0
-        22 de mar. de 2026	proj-404	0,32%	2026-03-22	0,32
-        23 de mar. de 2026	proj-403	0,55%	2026-03-23	0,55
-        23 de mar. de 2026	proj-404	0,32%	2026-03-23	0,32
-        24 de mar. de 2026	proj-403	0,18%	2026-03-24	0,18
-        24 de mar. de 2026	proj-404	0,19%	2026-03-24	0,19
-        25 de mar. de 2026	proj-403	0,11%	2026-03-25	0,11
-        25 de mar. de 2026	proj-404	0,23%	2026-03-25	0,23
-        26 de mar. de 2026	proj-403	0,21%	2026-03-26	0,21
-        26 de mar. de 2026	proj-404	0,26%	2026-03-26	0,26
-        28 de mar. de 2026	proj-403	0,24%	2026-03-28	0,24
-        28 de mar. de 2026	proj-404	0,36%	2026-03-28	0,36
-        29 de mar. de 2026	proj-403	0,04%	2026-03-29	0,04
-        29 de mar. de 2026	proj-404	0,28%	2026-03-29	0,28
-        30 de mar. de 2026	proj-403	0,17%	2026-03-30	0,17
-        30 de mar. de 2026	proj-404	0,23%	2026-03-30	0,23
-        31 de mar. de 2026	proj-403	0,43%	2026-03-31	0,43
-        31 de mar. de 2026	proj-404	0,22%	2026-03-31	0,22
-        02 de abr. de 2026	proj-403	0,55%	2026-04-02	0,55
-        02 de abr. de 2026	proj-404	0,23%	2026-04-02	0,23
-        03 de abr. de 2026	proj-403	0,32%	2026-04-03	0,32
-        03 de abr. de 2026	proj-404	0,29%	2026-04-03	0,29
-        04 de abr. de 2026	proj-403	0,21%	2026-04-04	0,21
-        04 de abr. de 2026	proj-404	0,43%	2026-04-04	0,43
-        05 de abr. de 2026	proj-403	0,41%	2026-04-05	0,41
-        05 de abr. de 2026	proj-404	0,17%	2026-04-05	0,17
-        06 de abr. de 2026	proj-403	0,85%	2026-04-06	0,85
-        06 de abr. de 2026	proj-404	0,34%	2026-04-06	0,34
-        07 de abr. de 2026	proj-403	0,46%	2026-04-07	0,46
-        07 de abr. de 2026	proj-404	0,31%	2026-04-07	0,31
-        08 de abr. de 2026	proj-403	0,40%	2026-04-08	0,4
-        08 de abr. de 2026	proj-404	0,47%	2026-04-08	0,47
-        09 de abr. de 2026	proj-403	0,34%	2026-04-09	0,34
-        09 de abr. de 2026	proj-404	0,39%	2026-04-09	0,39
-        10 de abr. de 2026	proj-403	0,33%	2026-04-10	0,33
-        10 de abr. de 2026	proj-404	0,39%	2026-04-10	0,39
-        11 de abr. de 2026	proj-403	0,12%	2026-04-11	0,12
-        11 de abr. de 2026	proj-404	0,38%	2026-04-11	0,38
-        12 de abr. de 2026	proj-403	0,11%	2026-04-12	0,11
-        12 de abr. de 2026	proj-404	0,24%	2026-04-12	0,24
-        13 de abr. de 2026	proj-403	0,41%	2026-04-13	0,41
-        13 de abr. de 2026	proj-404	0,32%	2026-04-13	0,32
-        14 de abr. de 2026	proj-403	0,43%	2026-04-14	0,43
-        14 de abr. de 2026	proj-404	0,31%	2026-04-14	0,31
-        15 de abr. de 2026	proj-403	0,27%	2026-04-15	0,27
-        15 de abr. de 2026	proj-404	0,27%	2026-04-15	0,27
-        16 de abr. de 2026	proj-403	0,12%	2026-04-16	0,12
-        16 de abr. de 2026	proj-404	0,26%	2026-04-16	0,26
-        17 de abr. de 2026	proj-403	0,22%	2026-04-17	0,22
-        17 de abr. de 2026	proj-404	0,22%	2026-04-17	0,22
-        18 de abr. de 2026	proj-403	0,26%	2026-04-18	0,26
-        18 de abr. de 2026	proj-404	0,29%	2026-04-18	0,29
-        19 de abr. de 2026	proj-403	0,70%	2026-04-19	0,7
-        19 de abr. de 2026	proj-404	0,42%	2026-04-19	0,42
-        20 de abr. de 2026	proj-403	0,14%	2026-04-20	0,14
-        20 de abr. de 2026	proj-404	0,30%	2026-04-20	0,3
-        21 de abr. de 2026	proj-403	0,26%	2026-04-21	0,26
-        21 de abr. de 2026	proj-404	0,28%	2026-04-21	0,28
-        22 de abr. de 2026	proj-403	0,20%	2026-04-22	0,2
-        22 de abr. de 2026	proj-404	0,24%	2026-04-22	0,24
-        23 de abr. de 2026	proj-403	0,34%	2026-04-23	0,34
-        23 de abr. de 2026	proj-404	0,22%	2026-04-23	0,22
-        24 de abr. de 2026	proj-403	0,22%	2026-04-24	0,22
-        24 de abr. de 2026	proj-404	0,33%	2026-04-24	0,33
-        25 de abr. de 2026	proj-403	0,09%	2026-04-25	0,09
-        25 de abr. de 2026	proj-404	0,37%	2026-04-25	0,37
-        26 de abr. de 2026	proj-403	0,15%	2026-04-26	0,15
-        26 de abr. de 2026	proj-404	0,35%	2026-04-26	0,35
-        27 de abr. de 2026	proj-403	0,40%	2026-04-27	0,4
-        27 de abr. de 2026	proj-404	0,32%	2026-04-27	0,32
-        30 de abr. de 2026	proj-403	0,15%	2026-04-30	0,15
-        30 de abr. de 2026	proj-404	0,20%	2026-04-30	0,2
-        01 de mai. de 2026	proj-403	0,39%	2026-05-01	0,39
-        01 de mai. de 2026	proj-404	0,25%	2026-05-01	0,25
-        02 de mai. de 2026	proj-403	0,38%	2026-05-02	0,38
-        02 de mai. de 2026	proj-404	0,21%	2026-05-02	0,21
-        03 de mai. de 2026	proj-403	0,42%	2026-05-03	0,42
-        03 de mai. de 2026	proj-404	0,27%	2026-05-03	0,27
-        04 de mai. de 2026	proj-403	0,34%	2026-05-04	0,34
-        04 de mai. de 2026	proj-404	0,16%	2026-05-04	0,16
-        06 de mai. de 2026	proj-403	0,12%	2026-05-06	0,12
-        06 de mai. de 2026	proj-404	0,22%	2026-05-06	0,22
-        07 de mai. de 2026	proj-403	0,43%	2026-05-07	0,43
-        07 de mai. de 2026	proj-404	0,21%	2026-05-07	0,21
-        08 de mai. de 2026	proj-403	0,42%	2026-05-08	0,42
-        08 de mai. de 2026	proj-404	0,20%	2026-05-08	0,2
-        11 de mai. de 2026	proj-403	0,43%	2026-05-11	0,43
-        11 de mai. de 2026	proj-404	0,05%	2026-05-11	0,05
-        12 de mai. de 2026	proj-403	0,47%	2026-05-12	0,47
-        12 de mai. de 2026	proj-404	0,15%	2026-05-12	0,15
-        14 de mai. de 2026	proj-403	0,48%	2026-05-14	0,48
-        14 de mai. de 2026	proj-404	0,07%	2026-05-14	0,07
-        15 de mai. de 2026	proj-403	0,43%	2026-05-15	0,43
-        15 de mai. de 2026	proj-404	0,19%	2026-05-15	0,19
-        16 de mai. de 2026	proj-403	0,21%	2026-05-16	0,21
-        16 de mai. de 2026	proj-404	0,18%	2026-05-16	0,18
-        17 de mai. de 2026	proj-403	0,34%	2026-05-17	0,34
-        17 de mai. de 2026	proj-404	0,20%	2026-05-17	0,2
-        18 de mai. de 2026	proj-403	0,49%	2026-05-18	0,49
-        18 de mai. de 2026	proj-404	0,17%	2026-05-18	0,17
-        20 de mai. de 2026	proj-403	0,49%	2026-05-20	0,49
-        20 de mai. de 2026	proj-404	0,07%	2026-05-20	0,07
-        21 de mai. de 2026	proj-403	0,46%	2026-05-21	0,46
-        21 de mai. de 2026	proj-404	0,11%	2026-05-21	0,11
-        22 de mai. de 2026	proj-403	0,20%	2026-05-22	0,2
-        22 de mai. de 2026	proj-404	0,11%	2026-05-22	0,11
-        23 de mai. de 2026	proj-403	0,24%	2026-05-23	0,24
-        23 de mai. de 2026	proj-404	0,22%	2026-05-23	0,22
-        24 de mai. de 2026	proj-403	0,31%	2026-05-24	0,31
-        24 de mai. de 2026	proj-404	0,27%	2026-05-24	0,27
-        27 de mai. de 2026	proj-403	0,29%	2026-05-27	0,29
-        27 de mai. de 2026	proj-404	0,02%	2026-05-27	0,02
-        28 de mai. de 2026	proj-403	0,43%	2026-05-28	0,43
-        28 de mai. de 2026	proj-404	0,14%	2026-05-28	0,14
-        29 de mai. de 2026	proj-403	0,38%	2026-05-29	0,38
-        29 de mai. de 2026	proj-404	0,23%	2026-05-29	0,23
-        31 de mai. de 2026	proj-403	0,51%	2026-05-31	0,51
-        31 de mai. de 2026	proj-404	0,21%	2026-05-31	0,21
-        01 de jun. de 2026	proj-403	0,40%	2026-06-01	0,4
-        01 de jun. de 2026	proj-404	0,18%	2026-06-01	0,18
-        `;
-
-        // Função auxiliar para analisar datas no formato DD de MMM. de AAAA (Ex: "22 de nov. de 2025")
-        function parseDatePT(dateStr) {
-            const months = {
-                'jan': 0, 'fev': 1, 'mar': 2, 'abr': 3, 'mai': 4, 'jun': 5,
-                'jul': 6, 'ago': 7, 'set': 8, 'out': 9, 'nov': 10, 'dez': 11
-            };
-            const parts = dateStr.toLowerCase().split(' de ');
-            if (parts.length >= 3) {
+        // Função auxiliar para analisar datas no formato DD-MM ou DD/MM de forma robusta
+        function parseDateDM(str) {
+            if (!str) return new Date(0);
+            // Remove quaisquer letras ou parênteses adicionais para limpar nomes de dias ex: "01-06 (seg.)" -> "01-06"
+            const cleanStr = String(str).replace(/[()a-zA-Záéíóuàèìòùäëïöüâêîôûñç.\s]/g, '').trim();
+            const parts = cleanStr.split(/[-/]/);
+            if (parts.length >= 2) {
                 const day = parseInt(parts[0], 10);
-                const monthName = parts[1].replace('.', '').trim().substring(0, 3);
-                const year = parseInt(parts[2], 10);
-                const month = months[monthName] !== undefined ? months[monthName] : 0;
+                const month = parseInt(parts[1], 10) - 1; // Base indexada em 0 no JS
+                let year = 2026; // Ano padrão do projeto
+                if (parts.length >= 3 && parts[2].length === 4) {
+                    year = parseInt(parts[2], 10);
+                }
                 return new Date(year, month, day);
             }
             return new Date(0);
         }
 
-        // Função para extrair o horário de um dispatch de campanha (ex: '7h' ou 'h10')
-        function extractHourSlot(campaignName) {
-            const camp = campaignName.toLowerCase();
-            let match = camp.match(/(\d+)h/);
-            if (match) return 'H' + parseInt(match[1]);
-            match = camp.match(/h(\d+)/);
-            if (match) return 'H' + parseInt(match[1]);
-            return null;
-        }
-
-        // Parseador e pivotador universal para processar o log transacional bruto
-        function processRawSpamLog(rawText, projectId) {
-            // Normaliza delimitadores (tabs ou vírgulas ou pontos e vírgulas)
-            const cleanText = rawText.replace(/[\t;]/g, ' ');
-            const regex = /(\d{1,2} de [a-zçáéíóu]+\.? de \d{4})\s*([a-zA-Z0-9-_]*)\s*(\d+(?:,\d+)?%)/gi;
-            
-            const entries = [];
-            let match;
-            while ((match = regex.exec(cleanText)) !== null) {
-                const dateStr = match[1].trim();
-                const campaign = match[2].trim();
-                const rateStr = match[3].trim();
-                const rateVal = parseFloat(rateStr.replace(',', '.').replace('%', '').trim());
-                
-                entries.push({ dateStr, campaign, spamRate: rateVal });
-            }
-
-            if (entries.length === 0) return [];
-
-            // Filtra as linhas referentes ao projeto selecionado
-            const filteredEntries = entries.filter(e => {
-                const campLower = e.campaign.toLowerCase();
-                return campLower.includes(String(projectId));
-            });
-
-            // Agrupa as dispatches filtradas por data
-            const groupsByDate = {};
-            filteredEntries.forEach(e => {
-                if (!groupsByDate[e.dateStr]) {
-                    groupsByDate[e.dateStr] = [];
-                }
-                groupsByDate[e.dateStr].push(e);
-            });
-
-            const pivotedRows = [];
-            Object.keys(groupsByDate).forEach(dateStr => {
-                const dayEntries = groupsByDate[dateStr];
-                
-                // Encontra a linha de taxa de spam consolidada/média do dia se houver (ex: proj-404 ou project-404)
-                let overallEntry = dayEntries.find(e => {
-                    const camp = e.campaign.toLowerCase();
-                    return camp === 'proj-' + projectId || camp === 'project-' + projectId || camp === 'proj' + projectId;
-                });
-
-                let daySpamRate = 0;
-                if (overallEntry) {
-                    daySpamRate = overallEntry.spamRate;
-                } else {
-                    const sum = dayEntries.reduce((acc, curr) => acc + curr.spamRate, 0);
-                    daySpamRate = parseFloat((sum / dayEntries.length).toFixed(3));
-                }
-
-                // Cria o registro diário estruturado
-                const dayObj = {
-                    data: dateStr,
-                    spamRate: daySpamRate,
-                    ge03: 0,
-                    campaigns: []
-                };
-
-                dayEntries.forEach(e => {
-                    const hourSlot = extractHourSlot(e.campaign);
-                    if (hourSlot) {
-                        const slotKey = hourSlot.toLowerCase(); // Ex: 'h10'
-                        dayObj[slotKey] = e.spamRate.toFixed(2) + '%';
-                        if (e.spamRate >= 0.30) {
-                            dayObj.ge03++;
-                        }
-                    }
-                    dayObj.campaigns.push(e);
-                });
-
-                // Simula volume de envios coerente baseado na data (para estabilidade visual)
-                const dateHash = dateStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-                const simulatedSends = 150000 + (dateHash % 350000);
-                dayObj.envios = simulatedSends.toLocaleString('pt-BR');
-
-                pivotedRows.push(dayObj);
-            });
-
-            // Ordena as datas decrescentemente (mais recente primeiro)
-            pivotedRows.sort((a, b) => parseDatePT(b.data) - parseDatePT(a.data));
-
-            return pivotedRows;
-        }
-
-        // Variável de Projetos Globais com Fallbacks Iniciais
+        // Dados de Fallback (Padrão quando não houver planilha google vinculada)
         const projectsData = [
             {
                 id: 404,
                 title: "Projeto 404",
                 subtitle: "SOLINERO MX — NÚCLEO PRINCIPAL",
+                // URL que você nos forneceu inserida como padrão de sincronização direta
                 defaultSheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSePugXgmjZTIO3_a46XJCGpjDHSSSCzUDR-Jk9OkPMafPffOIVr-M23se--EiwGrr6XE08nWMnIUwf/pub?gid=372389848&single=true&output=csv",
                 badge: "SEM DADOS",
                 badgeStyle: "bg-emerald-50 text-emerald-600 font-bold border border-emerald-100",
-                ultimoDia: "01 de jun. de 2026",
+                ultimoDia: "24-05 (dom.)",
                 envios: "344.210",
                 hojeGe03: "0",
                 statusGeral: "⚠️ OTIMIZAR - 0.18%",
+                badgeGeralStyle: "bg-[#f3a83b]/10 text-[#f3a83b] border-[#f3a83b]/20",
                 mDias: "30",
                 mEnvios: "14.556.941",
                 mCampanhas: "18",
                 mSpam: "0.18%",
-                detalhesTabela: []
+                detalhesTabela: [
+                    { data: "24-05 (dom.)", envios: "344.210", ge03: "0", h1: "—", h9: "—", h12: "—", h14: "—", h15: "—", h16: "—", h18: "—", h19: "—", h21: "—" },
+                    { data: "23-05 (sáb.)", envios: "371.232", ge03: "3", h1: "0.51%", h9: "0.30%", h12: "0.34%", h14: "0.13%", h15: "0.30%", h16: "0.14%", h18: "0.17%", h19: "0.09%", h21: "—" },
+                    { data: "22-05 (sex.)", envios: "814.263", ge03: "0", h1: "0.10%", h9: "0.09%", h12: "0.09%", h14: "0.09%", h15: "0.09%", h16: "0.14%", h18: "0.24%", h19: "—", h21: "0.10%" },
+                    { data: "21-05 (qui.)", envios: "625.914", ge03: "0", h1: "0.09%", h9: "0.09%", h12: "0.06%", h14: "0.26%", h15: "0.09%", h16: "0.19%", h18: "0.19%", h19: "0.19%", h21: "0.09%" },
+                    { data: "20-05 (qua.)", envios: "404.161", ge03: "0", h1: "0.09%", h9: "0.00%", h12: "0.11%", h14: "0.12%", h15: "0.00%", h16: "0.09%", h18: "0.17%", h19: "0.00%", h21: "0.09%" }
+                ],
+                datasetsSpam: [
+                    { label: "CTR U.", data: [0.38, 0.29, 0.11, 0.24, 0.13, 0.38], color: "#8b5cf6" },
+                    { label: "ENVIOS", data: [0.29, 0.19, 0.23, 0.19, 0.22, 0.35], color: "#f43f5e" },
+                    { label: "GERAL", data: [0.32, 0.17, 0.14, 0.22, 0.19, 0.25], color: "#f59e0b" },
+                    { label: "H1", data: [0.34, 0.48, 0.10, 0.09, 0.09, 0.49], color: "#06b6d4" },
+                    { label: "H12", data: [0.15, 0.22, 0.29, 0.19, 0.25, 0.18], color: "#eab308" },
+                    { label: "H14", data: [0.39, 0.26, 0.11, 0.34, 0.25, 0.22], color: "#ec4899" },
+                    { label: "H15", data: [0.24, 0.34, 0.20, 0.10, 0.24, 0.14], color: "#10b981" }
+                ]
             },
             {
                 id: 2513,
@@ -861,15 +380,25 @@
                 subtitle: "MX02 — EP10",
                 badge: "SEM DADOS",
                 badgeStyle: "bg-emerald-50 text-emerald-600 font-bold border border-emerald-100",
-                ultimoDia: "01 de jun. de 2026",
+                ultimoDia: "24-05 (dom.)",
                 envios: "65.515",
                 hojeGe03: "0",
                 statusGeral: "✅ APROVADO - 0.07%",
+                badgeGeralStyle: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
                 mDias: "30",
                 mEnvios: "2.456.120",
                 mCampanhas: "4",
                 mSpam: "0.07%",
-                detalhesTabela: []
+                detalhesTabela: [
+                    { data: "24-05 (dom.)", envios: "65.515", ge03: "0", h1: "0.04%", h9: "0.06%", h12: "0.05%", h14: "—", h15: "0.02%", h16: "0.05%", h18: "0.04%", h19: "—", h21: "0.05%" },
+                    { data: "23-05 (sáb.)", envios: "71.450", ge03: "1", h1: "0.32%", h9: "0.12%", h12: "0.08%", h14: "0.04%", h15: "0.05%", h16: "0.07%", h18: "0.06%", h19: "0.05%", h21: "—" },
+                    { data: "22-05 (sex.)", envios: "120.400", ge03: "0", h1: "0.08%", h9: "0.07%", h12: "0.07%", h14: "0.05%", h15: "0.06%", h16: "0.06%", h18: "0.09%", h19: "—", h21: "0.08%" }
+                ],
+                datasetsSpam: [
+                    { label: "CTR U.", data: [0.12, 0.08, 0.14, 0.09, 0.11, 0.07], color: "#8b5cf6" },
+                    { label: "GERAL", data: [0.08, 0.06, 0.09, 0.05, 0.07, 0.04], color: "#f59e0b" },
+                    { label: "H1", data: [0.15, 0.11, 0.12, 0.08, 0.09, 0.05], color: "#06b6d4" }
+                ]
             },
             {
                 id: 2547,
@@ -877,15 +406,23 @@
                 subtitle: "AQUISIÇÃO SEGMENTADA",
                 badge: "SEM DADOS",
                 badgeStyle: "bg-emerald-50 text-emerald-600 font-bold border border-emerald-100",
-                ultimoDia: "01 de jun. de 2026",
+                ultimoDia: "24-05 (dom.)",
                 envios: "5.497",
                 hojeGe03: "0",
                 statusGeral: "✅ APROVADO - 0.04%",
+                badgeGeralStyle: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
                 mDias: "30",
                 mEnvios: "180.200",
                 mCampanhas: "1",
                 mSpam: "0.04%",
-                detalhesTabela: []
+                detalhesTabela: [
+                    { data: "24-05 (dom.)", envios: "5.497", ge03: "0", h1: "—", h9: "—", h12: "—", h14: "—", h15: "—", h16: "—", h18: "—", h19: "—", h21: "—" },
+                    { data: "23-05 (sáb.)", envios: "6.210", ge03: "0", h1: "0.04%", h9: "0.03%", h12: "0.02%", h14: "0.04%", h15: "—", h16: "0.02%", h18: "0.01%", h19: "0.03%", h21: "0.04%" }
+                ],
+                datasetsSpam: [
+                    { label: "CTR U.", data: [0.05, 0.04, 0.06, 0.03, 0.04, 0.02], color: "#8b5cf6" },
+                    { label: "H1", data: [0.04, 0.03, 0.05, 0.02, 0.03, 0.01], color: "#06b6d4" }
+                ]
             },
             {
                 id: 2470,
@@ -893,82 +430,98 @@
                 subtitle: "LISTAS FRIAS",
                 badge: "SEM DADOS",
                 badgeStyle: "bg-emerald-50 text-emerald-600 font-bold border border-emerald-100",
-                ultimoDia: "01 de jun. de 2026",
+                ultimoDia: "24-05 (dom.)",
                 envios: "17.060",
                 hojeGe03: "0",
                 statusGeral: "❌ REMOVER - 0.35%",
+                badgeGeralStyle: "bg-rose-500/10 text-rose-500 border-rose-500/20",
                 mDias: "30",
                 mEnvios: "520.400",
                 mCampanhas: "24",
                 mSpam: "0.35%",
-                detalhesTabela: []
+                detalhesTabela: [
+                    { data: "24-05 (dom.)", envios: "17.060", ge03: "0", h1: "—", h9: "—", h12: "—", h14: "—", h15: "—", h16: "—", h18: "—", h19: "—", h21: "—" },
+                    { data: "23-05 (sáb.)", envios: "18.410", ge03: "8", h1: "0.62%", h9: "0.45%", h12: "0.39%", h14: "0.22%", h15: "0.34%", h16: "0.41%", h18: "0.38%", h19: "0.19%", h21: "—" },
+                    { data: "22-05 (sex.)", envios: "22.300", ge03: "12", h1: "0.41%", h9: "0.38%", h12: "0.36%", h14: "0.31%", h15: "0.33%", h16: "0.30%", h18: "0.35%", h19: "—", h21: "0.40%" }
+                ],
+                datasetsSpam: [
+                    { label: "CTR U.", data: [0.45, 0.55, 0.41, 0.39, 0.42, 0.38], color: "#8b5cf6" },
+                    { label: "ENVIOS", data: [0.38, 0.42, 0.39, 0.31, 0.35, 0.33], color: "#f43f5e" },
+                    { label: "H1", data: [0.62, 0.51, 0.45, 0.36, 0.40, 0.35], color: "#06b6d4" }
+                ]
             }
         ];
 
-        // Instâncias dos gráficos globais
+        // Instâncias globais de gráficos para destruição e recreação adequada
         let activeChart = null;
         let dailyVolumeChartInstance = null;
         let dailySpamLineChartInstance = null;
         let campaignSpamChartInstance = null;
+        let selectedProject = null;
 
-        // Ao carregar a página, inicializa todos os projetos com os dados reais consolidados
-        window.onload = function() {
-            initializeWithRealData();
-            renderProjectsGrid();
+        // Renderização Inicial
+        window.onload = async function() {
+            renderProjectsGrid(); // Renderiza primeiro com o fallback inicial
+            
+            // Tenta sincronizar silenciosamente as planilhas associadas em segundo plano ao abrir o app
+            for (let proj of projectsData) {
+                const savedUrl = localStorage.getItem(`gspread_url_${proj.id}`);
+                const urlToSync = savedUrl || proj.defaultSheetUrl;
+                if (urlToSync) {
+                    const success = await silentSyncGoogleSheets(urlToSync, proj.id);
+                    if (success) {
+                        console.log(`Projeto ${proj.id} sincronizado com sucesso na inicialização.`);
+                        if (proj.id === 404) {
+                            document.getElementById('syncIndicator').classList.remove('hidden');
+                        }
+                    }
+                }
+            }
         };
 
-        function initializeWithRealData() {
-            projectsData.forEach(proj => {
-                // Sincroniza dinamicamente usando os dados do Google Sheets passados (como fallback local imediato)
-                const pivotedRows = processRawSpamLog(GOOGLE_SHEETS_RAW_BACKUP, proj.id);
-                if (pivotedRows.length > 0) {
-                    proj.detalhesTabela = pivotedRows;
-                    updateMetricsForProject(proj);
+        // Sincronização em segundo plano sem notificações intrusivas (toasts) na inicialização
+        async function silentSyncGoogleSheets(url, projectId) {
+            try {
+                let csvUrl = url;
+                if (url.includes("docs.google.com/spreadsheets") && !url.includes("pub?")) {
+                    const matches = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                    if (matches && matches[1]) {
+                        csvUrl = `https://docs.google.com/spreadsheets/d/${matches[1]}/export?format=csv`;
+                        const gidMatch = url.match(/[#&?]gid=([0-9]+)/);
+                        if (gidMatch && gidMatch[1]) {
+                            csvUrl += `&gid=${gidMatch[1]}`;
+                        }
+                    }
                 }
-            });
+
+                const response = await fetch(csvUrl);
+                if (!response.ok) return false;
+
+                const csvText = await response.text();
+                
+                // Valida se o documento retornado é HTML de login (Planilha Privada)
+                if (csvText.includes("<!DOCTYPE html>") || csvText.includes("<html") || csvText.includes("Google-Accounts-SignIn")) {
+                    return false;
+                }
+
+                const parsed = parseCSV(csvText);
+                if (parsed.data.length === 0) return false;
+
+                const mappedData = mapCSVToTable(parsed);
+                const proj = projectsData.find(p => p.id === projectId);
+                
+                if (proj) {
+                    proj.detalhesTabela = mappedData;
+                    recalculateMetricsFromTable(proj);
+                    return true;
+                }
+            } catch (err) {
+                console.error("Erro no carregamento de inicialização automática:", err);
+            }
+            return false;
         }
 
-        // Consolida e atualiza métricas globais de cada projeto baseado nos registros pivotados
-        function updateMetricsForProject(proj) {
-            const table = proj.detalhesTabela;
-            proj.mDias = table.length.toString();
-            
-            let totalEnvios = 0;
-            let totalSpamSum = 0;
-            let campaignsGe03 = 0;
-
-            table.forEach(row => {
-                const sends = parseInt(row.envios.replace(/\./g, '')) || 0;
-                totalEnvios += sends;
-                totalSpamSum += row.spamRate;
-                campaignsGe03 += row.ge03;
-            });
-
-            proj.mEnvios = totalEnvios.toLocaleString('pt-BR');
-            proj.mCampanhas = campaignsGe03.toString();
-            
-            const avgSpam = table.length > 0 ? (totalSpamSum / table.length) : 0;
-            proj.mSpam = avgSpam.toFixed(2) + "%";
-
-            let label = "✅ APROVADO";
-            if (avgSpam >= 0.10 && avgSpam < 0.30) {
-                label = "⚠️ OTIMIZAR";
-            } else if (avgSpam >= 0.30) {
-                label = "❌ REMOVER";
-            }
-            proj.statusGeral = `${label} - ${proj.mSpam}`;
-
-            // Dados do último dia (topo do grid)
-            if (table.length > 0) {
-                proj.ultimoDia = table[0].data;
-                proj.envios = table[0].envios;
-                proj.hojeGe03 = table[0].ge03;
-                proj.badge = "Sincronizado";
-                proj.badgeStyle = "bg-emerald-50 text-emerald-600 font-bold border border-emerald-200 shadow-sm";
-            }
-        }
-
-        // Renderiza os cards do Hub de Projetos
+        // Renderiza os cards do Hub conforme o Print 1
         function renderProjectsGrid() {
             const grid = document.getElementById('projectsGrid');
             grid.innerHTML = '';
@@ -982,4 +535,841 @@
                         <div class="flex justify-between items-start gap-2">
                             <div>
                                 <span class="text-[10px] md:text-xs font-extrabold tracking-wider text-slate-400 uppercase">${proj.subtitle}</span>
-                                <h3
+                                <h3 class="text-xl md:text-2xl font-black text-[#0b2240] mt-1">${proj.title}</h3>
+                            </div>
+                            <span class="${proj.badgeStyle} text-[10px] md:text-xs font-extrabold tracking-wider px-3 py-1 rounded-full uppercase">
+                                ${proj.badge}
+                            </span>
+                        </div>
+
+                        <!-- Métricas Centrais -->
+                        <div class="grid grid-cols-3 gap-2 py-4 border-y border-slate-100 mt-2">
+                            <div class="text-center sm:text-left">
+                                <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">ÚLTIMO DIA</p>
+                                <p class="text-sm md:text-base font-extrabold text-[#0b2240]">${proj.ultimoDia}</p>
+                            </div>
+                            <div class="text-center sm:text-left">
+                                <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">ENVIOS</p>
+                                <p class="text-sm md:text-base font-extrabold text-[#0b2240]">${proj.envios}</p>
+                            </div>
+                            <div class="text-center sm:text-left">
+                                <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">&ge; 0,3 HOJE</p>
+                                <p class="text-sm md:text-base font-extrabold text-[#0b2240]">${proj.hojeGe03}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rodapé Card -->
+                    <div class="bg-slate-50/50 px-6 py-4 border-t border-slate-100 flex justify-between items-center gap-4">
+                        <button onclick="refreshSingleCard(this)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 text-slate-500 text-xs font-semibold hover:bg-slate-100 transition-all duration-200">
+                            <i class="fa-solid fa-arrows-rotate text-[10px]"></i>
+                            <span>ATUALIZAR</span>
+                        </button>
+                        <button onclick="openDashboard(${proj.id})" class="flex items-center gap-2 bg-[#0b2240] hover:bg-indigo-900 text-white px-5 py-2 rounded-full text-xs font-extrabold tracking-wider transition-all duration-200 shadow-sm">
+                            <span>ABRIR DASHBOARD</span>
+                            <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Navegação para a Tela de Dashboard (Print 2)
+        function openDashboard(projectId) {
+            const proj = projectsData.find(p => p.id === projectId);
+            if (!proj) return;
+            selectedProject = proj;
+
+            // Transição Suave de Telas
+            document.getElementById('hubView').classList.add('hidden');
+            document.getElementById('dashboardView').classList.remove('hidden');
+
+            // Setar Textos do Projeto Selecionado
+            document.getElementById('dashProjectTitle').innerText = proj.title;
+            document.getElementById('dashProjectSubtitle').innerText = proj.subtitle;
+            
+            const badge = document.getElementById('dashStatusBadge');
+            badge.innerText = proj.statusGeral;
+            badge.className = "text-xs font-black px-4 py-2 rounded-full border tracking-wider " + getBadgeColorClass(proj.statusGeral);
+
+            // Carregar dados salvos do localStorage se houver vinculação ativa ou default
+            const savedUrl = localStorage.getItem(`gspread_url_${proj.id}`);
+            const activeUrl = savedUrl || proj.defaultSheetUrl;
+            if (activeUrl) {
+                document.getElementById('sheetUrlInput').value = activeUrl;
+                document.getElementById('syncIndicator').classList.remove('hidden');
+                syncGoogleSheets(activeUrl, proj.id);
+            } else {
+                document.getElementById('sheetUrlInput').value = "";
+                document.getElementById('syncIndicator').classList.add('hidden');
+                // Carregar com fallback nativo
+                renderTableData(proj.detalhesTabela);
+                buildHistoricalChart(proj);
+                buildComplementaryCharts(proj);
+            }
+
+            // Setar Métricas Iniciais
+            document.getElementById('metricDias').innerText = proj.mDias;
+            document.getElementById('metricEnvios').innerText = proj.mEnvios;
+            document.getElementById('metricCampanhas').innerText = proj.mCampanhas;
+            document.getElementById('metricSpam').innerText = proj.mSpam;
+
+            showToast(`Dashboard do ${proj.title} carregado`);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Retornar ao Hub (Print 1)
+        function backToHub() {
+            document.getElementById('dashboardView').classList.add('hidden');
+            document.getElementById('hubView').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Helper para mapear os novos badges baseados em Aprovado, Otimizar e Remover
+        function getBadgeColorClass(statusText) {
+            if (statusText.includes("APROVADO")) {
+                return "bg-emerald-50 text-emerald-600 border-emerald-200"; 
+            } else if (statusText.includes("OTIMIZAR")) {
+                return "bg-amber-50 text-amber-500 border-amber-200"; 
+            } else {
+                return "bg-rose-50 text-rose-600 border-rose-200"; 
+            }
+        }
+
+        // Preenche as linhas e cabeçalhos da tabela de histórico diário de forma dinâmica
+        function renderTableData(rows) {
+            const thead = document.getElementById('historyTableHeader');
+            const tbody = document.getElementById('historyTableBody');
+            
+            if (!rows || rows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="100%" class="text-center py-4 text-slate-400">Nenhum dado encontrado</td></tr>';
+                return;
+            }
+
+            // Detecta dinamicamente todas as colunas extras de campanhas que vieram da planilha
+            const allKeys = Object.keys(rows[0]);
+            const campaignKeys = allKeys.filter(k => k !== 'data' && k !== 'envios' && k !== 'ge03');
+
+            // Renderiza cabeçalhos da tabela dinamicamente
+            let headerHTML = `
+                <tr>
+                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">DATA</th>
+                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-right">ENVIOS</th>
+                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">≥ 0,3</th>
+            `;
+            campaignKeys.forEach(k => {
+                headerHTML += `<th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">${k.toUpperCase()}</th>`;
+            });
+            headerHTML += `</tr>`;
+            thead.innerHTML = headerHTML;
+
+            // Ordena os dados decrescentemente (mais recente primeiro) baseados nas datas corrigidas
+            const sortedRows = [...rows].sort((a, b) => parseDateDM(b.data) - parseDateDM(a.data));
+
+            tbody.innerHTML = '';
+            sortedRows.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors";
+                
+                let rowHTML = `
+                    <td class="px-4 py-3 text-xs font-bold text-[#0b2240] whitespace-nowrap">${r.data}</td>
+                    <td class="px-4 py-3 text-xs font-bold text-[#0b2240] text-right whitespace-nowrap">${r.envios}</td>
+                    <td class="px-4 py-3 text-xs text-center whitespace-nowrap">${renderGe03Badge(r.ge03)}</td>
+                `;
+                
+                campaignKeys.forEach(k => {
+                    const val = r[k] !== undefined ? r[k] : '—';
+                    rowHTML += `<td class="px-4 py-3 text-xs font-bold text-center whitespace-nowrap ${getSpamColorClass(val)}">${val}</td>`;
+                });
+                
+                tr.innerHTML = rowHTML;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Classificação de cor para percentuais de spam baseados nas novas categorias (compatível com decimal de vírgula)
+        function getSpamColorClass(val) {
+            if (!val || val === "—") return "text-slate-400 font-normal";
+            const cleanVal = String(val).replace(',', '.').replace('%', '').trim();
+            const num = parseFloat(cleanVal);
+            if (isNaN(num)) return "text-slate-400 font-normal";
+            
+            if (num < 0.10) {
+                return "text-[#00b489]"; 
+            } else if (num >= 0.10 && num < 0.30) {
+                return "text-[#f3a83b]"; 
+            } else {
+                return "text-[#f43f5e]"; 
+            }
+        }
+
+        // Renderiza badge especial para colunas >= 0.3
+        function renderGe03Badge(val) {
+            const num = parseInt(val);
+            if (num > 0) {
+                return `<span class="bg-rose-50 text-rose-600 font-extrabold px-2.5 py-0.5 rounded-md border border-rose-100">⚠️ ${val}</span>`;
+            }
+            return `<span class="text-slate-400">0</span>`;
+        }
+
+        // Constrói Gráfico Multilinhas de histórico totalmente dinâmico
+        function buildHistoricalChart(proj) {
+            const ctx = document.getElementById('historicalChart').getContext('2d');
+            if (activeChart) { activeChart.destroy(); }
+
+            // Ordena de forma cronológica (mais antigo na esquerda -> mais recente na direita)
+            const sortedHistory = [...proj.detalhesTabela].sort((a, b) => parseDateDM(a.data) - parseDateDM(b.data));
+            const labels = sortedHistory.map(h => h.data);
+
+            // Mapeia de forma autônoma todas as chaves adicionais da planilha (ignorando colunas de controle)
+            const keysToRender = Object.keys(proj.detalhesTabela[0]).filter(k => k !== 'data' && k !== 'envios' && k !== 'ge03');
+            
+            const colors = {
+                'ctr u.': '#8b5cf6', 'geral': '#f59e0b', 'h1': '#06b6d4', 'h9': '#a78bfa',
+                'h12': '#eab308', 'h14': '#ec4899', 'h15': '#10b981', 'h16': '#3b82f6',
+                'h18': '#f97316', 'h19': '#14b8a6', 'h21': '#f43f5e'
+            };
+            const defaultColors = ['#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f43f5e', '#a78bfa', '#14b8a6'];
+            
+            let colorIndex = 0;
+            const datasets = [];
+
+            keysToRender.forEach(key => {
+                const hasData = sortedHistory.some(h => h[key] && h[key] !== '—');
+                if (hasData) {
+                    const dataPoints = sortedHistory.map(h => {
+                        const val = h[key];
+                        if (val && val !== '—') {
+                            return parseFloat(String(val).replace(',', '.').replace('%', '').trim());
+                        }
+                        return null;
+                    });
+                    
+                    datasets.push({
+                        label: key.toUpperCase(),
+                        data: dataPoints,
+                        borderColor: colors[key] || defaultColors[colorIndex++ % defaultColors.length],
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        pointHoverRadius: 6,
+                        tension: 0.4,
+                        spanGaps: true // Conecta pontos mesmo havendo lacunas '—' no período
+                    });
+                }
+            });
+
+            datasets.push({
+                label: "Teto 0.3% (Remover)",
+                data: Array(labels.length).fill(0.30),
+                borderColor: '#f43f5e',
+                borderDash: [5, 5],
+                borderWidth: 1.5,
+                pointRadius: 0,
+                fill: false,
+                labelColor: '#f43f5e'
+            });
+
+            activeChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels: labels, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 10, boxHeight: 10, padding: 12,
+                                font: { size: 10, weight: 'bold' },
+                                usePointStyle: true, pointStyle: 'circle'
+                            }
+                        },
+                        tooltip: { mode: 'index', intersect: false, backgroundColor: '#0b2240' }
+                    },
+                    scales: {
+                        y: {
+                            min: 0.00,
+                            ticks: {
+                                stepSize: 0.15,
+                                callback: value => value.toFixed(2) + '%',
+                                color: '#94a3b8', font: { size: 10, weight: '600' }
+                            },
+                            grid: { color: '#f1f5f9' }
+                        },
+                        x: { ticks: { color: '#94a3b8', font: { size: 10, weight: '600' } }, grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // Constrói os gráficos adicionais totalmente sincronizados
+        function buildComplementaryCharts(proj) {
+            // Ordena de forma cronológica (mais antigo para mais recente)
+            const sortedHistory = [...proj.detalhesTabela].sort((a, b) => parseDateDM(a.data) - parseDateDM(b.data));
+            const dailyLabels = sortedHistory.map(h => h.data);
+
+            // 1. GRÁFICO DE BARRAS POR DIA (Volume de Envios)
+            const ctxDaily = document.getElementById('dailyVolumeChart').getContext('2d');
+            if (dailyVolumeChartInstance) { dailyVolumeChartInstance.destroy(); }
+
+            const dailyData = sortedHistory.map(h => {
+                const cleanEnvios = String(h.envios).replace(/\./g, '').replace(/,/g, '').trim();
+                return parseInt(cleanEnvios) || 0;
+            });
+
+            dailyVolumeChartInstance = new Chart(ctxDaily, {
+                type: 'bar',
+                data: {
+                    labels: dailyLabels,
+                    datasets: [{
+                        label: 'Total de Envios',
+                        data: dailyData,
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 8,
+                        maxBarThickness: 45
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            grid: { color: '#f1f5f9' },
+                            ticks: {
+                                color: '#94a3b8', font: { size: 10, weight: '600' },
+                                callback: val => val >= 1000000 ? (val / 1000000).toFixed(1) + 'M' : val >= 1000 ? (val / 1000) + 'k' : val
+                            }
+                        },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10, weight: '600' } } }
+                    }
+                }
+            });
+
+            // 2. GRÁFICO DE LINHA - TAXA DE SPAM POR DIA (Média real compatível com vírgulas)
+            const ctxDailySpam = document.getElementById('dailySpamLineChart').getContext('2d');
+            if (dailySpamLineChartInstance) { dailySpamLineChartInstance.destroy(); }
+
+            const campaignKeys = Object.keys(proj.detalhesTabela[0]).filter(k => k !== 'data' && k !== 'envios' && k !== 'ge03');
+
+            const dailySpamData = sortedHistory.map(h => {
+                let sum = 0;
+                let count = 0;
+                campaignKeys.forEach(k => {
+                    const val = h[k];
+                    if (val && val !== '—') {
+                        const cleanVal = String(val).replace(',', '.').replace('%', '').trim();
+                        const numericVal = parseFloat(cleanVal);
+                        if (!isNaN(numericVal)) {
+                            sum += numericVal;
+                            count++;
+                        }
+                    }
+                });
+                return count > 0 ? parseFloat((sum / count).toFixed(3)) : 0;
+            });
+
+            dailySpamLineChartInstance = new Chart(ctxDailySpam, {
+                type: 'line',
+                data: {
+                    labels: dailyLabels,
+                    datasets: [
+                        {
+                            label: 'Spam Médio do Dia',
+                            data: dailySpamData,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                            borderWidth: 3,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#f59e0b',
+                            fill: true,
+                            tension: 0.35
+                        },
+                        {
+                            label: 'Teto Alerta (0.3%)',
+                            data: Array(dailyLabels.length).fill(0.30),
+                            borderColor: '#f43f5e',
+                            borderDash: [5, 5],
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            min: 0,
+                            grid: { color: '#f1f5f9' },
+                            ticks: {
+                                color: '#94a3b8', font: { size: 10, weight: '600' },
+                                callback: val => val.toFixed(2) + '%'
+                            }
+                        },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10, weight: '600' } } }
+                    }
+                }
+            });
+
+            // 3. GRÁFICO POR CAMPANHA / HORÁRIO (Taxa média de Spam compatível com vírgulas)
+            const ctxCampaign = document.getElementById('campaignSpamChart').getContext('2d');
+            if (campaignSpamChartInstance) { campaignSpamChartInstance.destroy(); }
+
+            const campaignLabels = campaignKeys.map(k => k.toUpperCase().startsWith('H') ? 'Campanha ' + k.toUpperCase() : k.toUpperCase());
+
+            const campaignData = campaignKeys.map(key => {
+                let sum = 0;
+                let count = 0;
+                proj.detalhesTabela.forEach(row => {
+                    const cellVal = row[key];
+                    if (cellVal && cellVal !== '—') {
+                        const cleanVal = String(cellVal).replace(',', '.').replace('%', '').trim();
+                        const numericVal = parseFloat(cleanVal);
+                        if (!isNaN(numericVal)) {
+                            sum += numericVal;
+                            count++;
+                        }
+                    }
+                });
+                return count > 0 ? parseFloat((sum / count).toFixed(3)) : 0;
+            });
+
+            campaignSpamChartInstance = new Chart(ctxCampaign, {
+                type: 'bar',
+                data: {
+                    labels: campaignLabels,
+                    datasets: [{
+                        label: 'Taxa Média',
+                        data: campaignData,
+                        backgroundColor: campaignData.map(val => {
+                            if (val < 0.10) return '#00b489'; 
+                            if (val < 0.30) return '#f3a83b'; 
+                            return '#f43f5e'; 
+                        }),
+                        borderRadius: 6,
+                        maxBarThickness: 16
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: {
+                            min: 0,
+                            grid: { color: '#f1f5f9' },
+                            ticks: {
+                                color: '#94a3b8', font: { size: 10, weight: '600' },
+                                callback: val => val.toFixed(2) + '%'
+                            }
+                        },
+                        y: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10, weight: '600' } } }
+                    }
+                }
+            });
+        }
+
+        // Motor de Parsing para CSVs com autodeteção robusta de separador (Vírgula vs Ponto e Vírgula)
+        function parseCSV(text) {
+            // Analisa a primeira linha para autodetectar o separador regional correcto
+            const firstLine = text.split('\n')[0] || '';
+            const commaCount = (firstLine.match(/,/g) || []).length;
+            const semiCount = (firstLine.match(/;/g) || []).length;
+            const delimiter = semiCount > commaCount ? ';' : ',';
+
+            let lines = [];
+            let row = [""];
+            let inQuotes = false;
+
+            for (let i = 0; i < text.length; i++) {
+                let c = text[i];
+                let next = text[i+1];
+                if (c === '"') {
+                    if (inQuotes && next === '"') { row[row.length - 1] += '"'; i++; }
+                    else { inQuotes = !inQuotes; }
+                } else if (c === delimiter && !inQuotes) {
+                    row.push("");
+                } else if ((c === '\r' || c === '\n') && !inQuotes) {
+                    if (c === '\r' && next === '\n') { i++; }
+                    lines.push(row);
+                    row = [""];
+                } else {
+                    row[row.length - 1] += c;
+                }
+            }
+            if (row.length > 1 || row[0] !== "") { lines.push(row); }
+            if (lines.length === 0) return { headers: [], data: [] };
+
+            const headers = lines[0].map(h => h.trim().toLowerCase());
+            const data = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i];
+                if (values.length < headers.length) continue;
+                // Proteção contra linhas vazias no rodapé do CSV
+                if (values.every(v => v.trim() === "")) continue;
+
+                const rowObj = {};
+                headers.forEach((header, index) => {
+                    rowObj[header] = values[index] ? values[index].trim() : "";
+                });
+                data.push(rowObj);
+            }
+            return { headers, data };
+        }
+
+        // Mapeia os dados brutos do Google Sheets estruturados dinamicamente
+        function mapCSVToTable(parsed) {
+            const { headers, data } = parsed;
+            
+            const findKey = (possibleNames) => {
+                return headers.find(h => possibleNames.includes(h.toLowerCase().trim()));
+            };
+
+            const dataKey = findKey(['data', 'date', 'dia', 'período']);
+            const enviosKey = findKey(['envios', 'volume', 'sent', 'quantidade']);
+            const ge03Key = findKey(['≥ 0,3', '>=0,3', '>=0.3', 'ge0.3', 'ge03', '>= 0.3', '>= 0,3']);
+            
+            return data.map(row => {
+                const mappedRow = {
+                    data: row[dataKey] || '—',
+                    envios: row[enviosKey] || '0',
+                    ge03: row[ge03Key] || '0'
+                };
+                
+                // Copia automaticamente qualquer outra coluna presente na planilha (H1, H9, CTR, etc.)
+                Object.keys(row).forEach(key => {
+                    const normalizedKey = key.trim().toLowerCase();
+                    if (normalizedKey !== dataKey && normalizedKey !== enviosKey && normalizedKey !== ge03Key) {
+                        mappedRow[normalizedKey] = row[key] || '—';
+                    }
+                });
+                return mappedRow;
+            });
+        }
+
+        // Recalcula métricas, cores e status em tempo real a partir da planilha carregada
+        function recalculateMetricsFromTable(proj) {
+            const table = proj.detalhesTabela;
+            proj.mDias = table.length.toString();
+            
+            let totalEnvios = 0;
+            let campaignsGe03 = 0;
+            let totalSpamSum = 0;
+            let spamCount = 0;
+
+            table.forEach(row => {
+                const env = parseInt(String(row.envios).replace(/\./g, '').replace(/,/g, '').trim()) || 0;
+                totalEnvios += env;
+
+                const campaignKeys = Object.keys(row).filter(k => k !== 'data' && k !== 'envios' && k !== 'ge03');
+                campaignKeys.forEach(k => {
+                    const val = row[k];
+                    if (val && val !== '—') {
+                        const cleanVal = String(val).replace(',', '.').replace('%', '').trim();
+                        const numericVal = parseFloat(cleanVal);
+                        if (!isNaN(numericVal)) {
+                            totalSpamSum += numericVal;
+                            spamCount++;
+                            if (numericVal >= 0.30) { campaignsGe03++; }
+                        }
+                    }
+                });
+            });
+
+            proj.mEnvios = totalEnvios.toLocaleString('pt-BR');
+            proj.mCampanhas = campaignsGe03.toString();
+            
+            const avgSpam = spamCount > 0 ? (totalSpamSum / spamCount) : 0;
+            proj.mSpam = avgSpam.toFixed(2) + "%";
+
+            let label = "✅ APROVADO";
+            if (avgSpam >= 0.10 && avgSpam < 0.30) {
+                label = "⚠️ OTIMIZAR";
+            } else if (avgSpam >= 0.30) {
+                label = "❌ REMOVER";
+            }
+            proj.statusGeral = `${label} - ${proj.mSpam}`;
+
+            // Atualiza na tela do Dashboard se ele estiver visível
+            if (selectedProject && selectedProject.id === proj.id) {
+                document.getElementById('metricDias').innerText = proj.mDias;
+                document.getElementById('metricEnvios').innerText = proj.mEnvios;
+                document.getElementById('metricCampanhas').innerText = proj.mCampanhas;
+                document.getElementById('metricSpam').innerText = proj.mSpam;
+
+                const badge = document.getElementById('dashStatusBadge');
+                badge.innerText = proj.statusGeral;
+                badge.className = "text-xs font-black px-4 py-2 rounded-full border tracking-wider " + getBadgeColorClass(proj.statusGeral);
+            }
+
+            // Atualiza as propriedades do Card na Home para que correspondam aos dados sincronizados
+            const sorted = [...table].sort((a, b) => parseDateDM(b.data) - parseDateDM(a.data));
+            if (sorted.length > 0) {
+                proj.ultimoDia = sorted[0].data;
+                proj.envios = sorted[0].envios;
+                proj.hojeGe03 = sorted[0].ge03;
+                proj.badge = "SINCRONIZADO";
+                proj.badgeStyle = "bg-emerald-50 text-emerald-600 font-bold border border-emerald-200 shadow-sm";
+            }
+            renderProjectsGrid();
+        }
+
+        // Sincroniza dinamicamente usando a API de Fetch de CSVs e mantendo o identificador de aba (gid)
+        async function syncGoogleSheets(url, projectId) {
+            try {
+                let csvUrl = url;
+                if (url.includes("docs.google.com/spreadsheets") && !url.includes("pub?")) {
+                    const matches = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                    if (matches && matches[1]) {
+                        csvUrl = `https://docs.google.com/spreadsheets/d/${matches[1]}/export?format=csv`;
+                        
+                        // Extrai dinamicamente o GID se ele existir na URL original para sincronizar a aba correta
+                        const gidMatch = url.match(/[#&?]gid=([0-9]+)/);
+                        if (gidMatch && gidMatch[1]) {
+                            csvUrl += `&gid=${gidMatch[1]}`;
+                        }
+                    }
+                }
+
+                showToast("Buscando dados no Google Sheets...");
+
+                const response = await fetch(csvUrl);
+                if (!response.ok) throw new Error("Erro ao carregar link.");
+
+                const csvText = await response.text();
+                
+                // Valida se o documento retornado é HTML de login (Planilha Privada)
+                if (csvText.includes("<!DOCTYPE html>") || csvText.includes("<html") || csvText.includes("Google-Accounts-SignIn")) {
+                    throw new Error("A planilha está privada! Altere o compartilhamento para 'Qualquer pessoa com o link pode ler' no Google Sheets.");
+                }
+
+                const parsed = parseCSV(csvText);
+                if (parsed.data.length === 0) {
+                    throw new Error("Planilha vazia ou com formato inválido.");
+                }
+
+                const mappedData = mapCSVToTable(parsed);
+                const proj = projectsData.find(p => p.id === projectId);
+                
+                if (proj) {
+                    proj.detalhesTabela = mappedData;
+                    recalculateMetricsFromTable(proj);
+
+                    renderTableData(proj.detalhesTabela);
+                    buildHistoricalChart(proj);
+                    buildComplementaryCharts(proj);
+                    
+                    localStorage.setItem(`gspread_url_${projectId}`, url);
+                    document.getElementById('syncIndicator').classList.remove('hidden');
+                    
+                    showToast("Planilha sincronizada com sucesso!");
+                    return true;
+                }
+            } catch (err) {
+                console.error(err);
+                showToast(err.message || "Erro de leitura da planilha. Verifique o link e as definições de partilha.");
+                return false;
+            }
+        }
+
+        // Funções para controle do modal de Sincronização
+        function openSyncModal() {
+            const modal = document.getElementById('syncModal');
+            const content = document.getElementById('syncModalContent');
+            const input = document.getElementById('sheetUrlInput');
+            
+            // Define por padrão a URL de exportação direta fornecida por você
+            if (!input.value.trim() && selectedProject && selectedProject.id === 404) {
+                input.value = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSePugXgmjZTIO3_a46XJCGpjDHSSSCzUDR-Jk9OkPMafPffOIVr-M23se--EiwGrr6XE08nWMnIUwf/pub?gid=372389848&single=true&output=csv";
+            }
+            
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            content.classList.remove('translate-y-4');
+        }
+
+        function closeSyncModal() {
+            const modal = document.getElementById('syncModal');
+            const content = document.getElementById('syncModalContent');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            content.classList.add('translate-y-4');
+        }
+
+        function handleSyncSubmit() {
+            const url = document.getElementById('sheetUrlInput').value.trim();
+            if (!url) {
+                showToast("Por favor, forneça um link válido.");
+                return;
+            }
+            if (selectedProject) {
+                syncGoogleSheets(url, selectedProject.id);
+                closeSyncModal();
+            }
+        }
+
+        function clearSyncUrl() {
+            if (selectedProject) {
+                localStorage.removeItem(`gspread_url_${selectedProject.id}`);
+                document.getElementById('sheetUrlInput').value = "";
+                document.getElementById('syncIndicator').classList.add('hidden');
+                showToast("Vínculo removido. Restaurando padrão local...");
+                closeSyncModal();
+                openDashboard(selectedProject.id); // Recarrega do padrão local
+            }
+        }
+
+        // Filtro interativo na tabela "HISTÓRICO DIÁRIO"
+        function filterTable() {
+            const input = document.getElementById("tableSearch");
+            const filter = input.value.toUpperCase();
+            const table = document.getElementById("historyTable");
+            const tr = table.getElementsByTagName("tr");
+
+            for (let i = 1; i < tr.length; i++) {
+                const td = tr[i].getElementsByTagName("td")[0]; 
+                if (td) {
+                    const txtValue = td.textContent || td.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        tr[i].style.display = "";
+                    } else {
+                        tr[i].style.display = "none";
+                    }
+                }
+            }
+        }
+
+        // Filtros de Período do Dashboard
+        function setPeriod(period) {
+            ['7d', '30d', '90d', 'all'].forEach(p => {
+                const btn = document.getElementById(`btn-${p}`);
+                btn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 text-slate-500 hover:text-[#0b2240]";
+            });
+            const activeBtn = document.getElementById(`btn-${period}`);
+            activeBtn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 bg-indigo-50 text-indigo-600 shadow-sm";
+
+            if (selectedProject) {
+                const factor = period === '7d' ? 0.7 : period === '90d' ? 1.4 : period === 'all' ? 2 : 1;
+                const baseEnvios = parseInt(selectedProject.mEnvios.replace(/\./g, ''));
+                
+                document.getElementById('metricEnvios').innerText = Math.round(baseEnvios * factor).toLocaleString('pt-BR');
+                document.getElementById('metricDias').innerText = period === '7d' ? '7' : period === '30d' ? '30' : period === '90d' ? '90' : '150';
+                
+                activeChart.data.datasets.forEach(dataset => {
+                    if (!dataset.label.includes('Teto')) {
+                        dataset.data = dataset.data.map(val => val !== null ? Math.min(0.55, Math.max(0.01, val * (0.8 + Math.random() * 0.4))) : null);
+                    }
+                });
+                activeChart.update();
+
+                dailyVolumeChartInstance.data.datasets[0].data = dailyVolumeChartInstance.data.datasets[0].data.map(val => Math.round(val * factor * (0.9 + Math.random() * 0.2)));
+                dailyVolumeChartInstance.update();
+
+                dailySpamLineChartInstance.data.datasets[0].data = dailySpamLineChartInstance.data.datasets[0].data.map(val => Math.min(0.55, Math.max(0.01, val * (0.8 + Math.random() * 0.4))));
+                dailySpamLineChartInstance.update();
+
+                campaignSpamChartInstance.data.datasets[0].data = campaignSpamChartInstance.data.datasets[0].data.map(val => Math.min(0.55, Math.max(0.01, val * (0.8 + Math.random() * 0.4))));
+                campaignSpamChartInstance.update();
+
+                showToast(`Filtrado por ${period === 'all' ? 'todo o período' : period}`);
+            }
+        }
+
+        // Exportador de CSV
+        function downloadCSV() {
+            if (!selectedProject) return;
+            
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "DATA,ENVIOS,GE03,H1,H9,H12,H14,H15,H16,H18,H19,H21\n";
+            
+            selectedProject.detalhesTabela.forEach(r => {
+                csvContent += `${r.data},${r.envios.replace('.', '')},${r.ge03},${r.h1},${r.h9},${r.h12},${r.h14},${r.h15},${r.h16},${r.h18},${r.h19},${r.h21}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `historico_${selectedProject.title.toLowerCase().replace(' ', '_')}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("Planilha CSV baixada!");
+        }
+
+        // Animação de atualizar o Card individual do Hub
+        function refreshSingleCard(btnElement) {
+            const icon = btnElement.querySelector('i');
+            icon.classList.add('fa-spin');
+            btnElement.disabled = true;
+            
+            setTimeout(() => {
+                icon.classList.remove('fa-spin');
+                btnElement.disabled = false;
+                showToast("Dados do projeto atualizados!");
+            }, 1000);
+        }
+
+        // Atualização geral
+        function triggerRefresh() {
+            const icon = document.getElementById('refreshIconDash');
+            icon.classList.add('fa-spin');
+            
+            setTimeout(() => {
+                icon.classList.remove('fa-spin');
+                if (selectedProject) {
+                    const savedUrl = localStorage.getItem(`gspread_url_${selectedProject.id}`);
+                    const urlToSync = savedUrl || selectedProject.defaultSheetUrl;
+                    if (urlToSync) {
+                        syncGoogleSheets(urlToSync, selectedProject.id);
+                    } else {
+                        // Modo simulação padrão
+                        const randomSpamVal = (0.05 + Math.random() * 0.35);
+                        let label = "✅ APROVADO";
+                        if (randomSpamVal >= 0.10 && randomSpamVal < 0.30) { label = "⚠️ OTIMIZAR"; }
+                        else if (randomSpamVal >= 0.30) { label = "❌ REMOVER"; }
+
+                        const formattedSpamLabel = `${label} - ${randomSpamVal.toFixed(2)}%`;
+                        document.getElementById('metricSpam').innerText = randomSpamVal.toFixed(2) + "%";
+                        
+                        const badge = document.getElementById('dashStatusBadge');
+                        badge.innerText = formattedSpamLabel;
+                        badge.className = "text-xs font-black px-4 py-2 rounded-full border tracking-wider " + getBadgeColorClass(formattedSpamLabel);
+
+                        activeChart.data.datasets.forEach(dataset => {
+                            if (!dataset.label.includes('Teto')) {
+                                dataset.data = dataset.data.map(val => Math.min(0.55, Math.max(0.01, val * (0.9 + Math.random() * 0.2))));
+                            }
+                        });
+                        activeChart.update();
+                        buildComplementaryCharts(selectedProject);
+                    }
+                    
+                    const agora = new Date();
+                    document.getElementById('dashUpdateTime').innerText = agora.toLocaleDateString('pt-BR') + ", " + agora.toLocaleTimeString('pt-BR');
+                }
+                showToast("Métricas atualizadas!");
+            }, 1200);
+        }
+
+        // Toasts
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const text = document.getElementById('toastText');
+            text.innerText = message;
+            
+            toast.classList.remove('opacity-0', 'translate-y-20', 'pointer-events-none');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-20', 'pointer-events-none');
+                toast.classList.remove('opacity-100', 'translate-y-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
