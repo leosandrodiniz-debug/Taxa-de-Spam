@@ -97,13 +97,15 @@
         .chart-container { position: relative; height: 290px; min-height: 290px; width: 100%; }
 
         .analise-box { background-color: #FFFDF5; border-left: 4px solid var(--alert-yellow); border-radius: 8px; padding: 16px; margin-bottom: 20px; }
-        .analise-box.erro-conexao { background-color: #FEF2F2; border-left-color: var(--alert-red); color: #991B1B; }
+        .analise-box.erro-conexao { background-color: #FEF2F2; border-left-color: var(--alert-red); color: #991B1B; padding: 16px; margin-bottom: 20px; border-radius: 8px; }
 
         .btn-bypass {
-            background-color: var(--purple-select); color: white; border: none; padding: 6px 14px;
-            border-radius: 4px; font-size: 12px; font-weight: 600; margin-top: 10px; cursor: pointer;
-            display: inline-flex; align-items: center; gap: 6px;
+            background-color: var(--purple-select); color: white; border: none; padding: 8px 16px;
+            border-radius: 20px; font-size: 12px; font-weight: 600; margin-top: 12px; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(79, 70, 229, 0.2);
+            transition: all 0.2s;
         }
+        .btn-bypass:hover { background-color: #3b31c4; transform: translateY(-1px); }
 
         /* BROADCAST TABLE FILTER BAR */
         .table-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: #F8FAFC; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px; }
@@ -155,6 +157,13 @@
                 <span class="badge-sem-aquisicao">Selo: SEM Aquisição</span>
             </div>
         </header>
+
+        <div id="banner-alerta-local" style="display:none;" class="analise-box erro-conexao">
+            <strong>⚠️ RESTRIÇÃO DE REQUISIÇÃO LOCAL DETECTADA (CORS DE NAVEGADOR)</strong><br>
+            O navegador bloqueou a busca automática online porque o HTML está rodando direto do seu computador.<br>
+            <em>Não se preocupe: Esse aviso sumirá e funcionará sozinho assim que colocar no GitHub Pages.</em><br>
+            <button class="btn-bypass" onclick="document.getElementById('bypass-file-input').click()">📂 Carregar arquivo CSV Manualmente (Para testar local)</button>
+        </div>
 
         <section>
             <div class="section-title">🏢 Unidades Operacionais (Detecção de Projetos Automática)</div>
@@ -235,8 +244,8 @@
     <div id="custom-toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 8px;"></div>
 
     <script>
-        // COLE SEU LINK DO 'PUBLICAR NA WEB' DO GOOGLE SHEETS (FORMATO CSV) AQUI EMBAIXO
-        const URL_PUBLICA_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSePugXgmjZTIO3_a46XJCGpjDHSSSCzUDR-Jk9OkPMafPffOIVr-M23se--EiwGrr6XE08nWMnIUwf/pub?output=csv";
+        // URL Oficial de Publicação integrada diretamente no sistema
+        const SPREADSHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSePugXgmjZTIO3_a46XJCGpjDHSSSCzUDR-Jk9OkPMafPffOIVr-M23se--EiwGrr6XE08nWMnIUwf/pub?output=csv";
 
         const activeCharts = { gSpamDia: null };
         const PROJETOS_METADATA = {
@@ -246,10 +255,22 @@
             "2547": "Projeto 2547 (MX05-JBT)"
         };
 
-        // Dados internos de segurança padrão
+        // Dados de segurança iniciais (Maio e Junho estruturados)
         let LOGS_PLANILHA = {
-            "01/06": [{ id: "broad-2513-mx-ep10-d01h01-bd-6", spam: 0.70 }, { id: "proj-404", spam: 0.18 }],
-            "31/05": [{ id: "broad-2513-mx-ep10-d06h21-bd-6", spam: 0.22 }, { id: "proj-404", spam: 0.21 }]
+            "01/06": [
+                { id: "broad-2513-mx-ep10-d01h01-bd-6", spam: 0.70 },
+                { id: "broad-2513-mx-ep10-d01h09-bd-6", spam: 0.24 },
+                { id: "broad-2513-mx-ep10-d01h15-bd-6", spam: 0.23 },
+                { id: "broad-2513-mx-ep10-d07h21-bd-6", spam: 0.23 },
+                { id: "proj-404", spam: 0.18 }
+            ],
+            "31/05": [
+                { id: "broad-2513-mx-ep10-d06h21-bd-6", spam: 0.22 },
+                { id: "broad-2513-mx-ep10-d07h01-bd-6", spam: 0.67 },
+                { id: "broad-2513-mx-ep10-d07h09-bd-6", spam: 0.44 },
+                { id: "broad-2513-mx-ep10-d07h15-bd-6", spam: 0.65 },
+                { id: "proj-404", spam: 0.21 }
+            ]
         };
 
         const DADOS = { activeProjectId: "404", activePreset: "7d", activeFilter: "todos", startDate: null, endDate: null, projetosConfig: {} };
@@ -289,6 +310,16 @@
                 }
             }
             
+            if (headerIdx === -1) {
+                for (let i = 0; i < lines.length; i++) {
+                    const cols = lines[i].split(",");
+                    if (cols.length >= 3 && /^\d{4}-\d{2}-\d{2}$/.test(cols[0].trim())) {
+                        headerIdx = i - 1;
+                        break;
+                    }
+                }
+            }
+
             if (headerIdx === -1) return false;
 
             const dataLines = lines.slice(headerIdx + 1);
@@ -366,36 +397,23 @@
         }
 
         async function sincronizarGoogleSheets() {
-            if (URL_PUBLICA_CSV === "https://docs.google.com/spreadsheets/d/e/2PACX-1vSePugXgmjZTIO3_a46XJCGpjDHSSSCzUDR-Jk9OkPMafPffOIVr-M23se--EiwGrr6XE08nWMnIUwf/pub?output=csv") {
-                mostrarAvisoBypass();
-                return;
-            }
-
             const btn = document.getElementById("btn-sync-sheets");
             btn.disabled = true; btn.innerText = "⏳ Sincronizando...";
             
             try {
-                const response = await fetch(`${URL_PUBLICA_CSV}&_nocache=${Date.now()}`);
+                const response = await fetch(`${SPREADSHEET_CSV_URL}&_nocache=${Date.now()}`);
                 if (!response.ok) throw new Error();
                 const csvText = await response.text();
                 processarTextoCSV(csvText);
                 showToast("Sincronizado com sucesso com o Google Sheets.", "success");
-                document.getElementById("caixa-insights-postmaster").className = "analise-box";
+                document.getElementById("banner-alerta-local").style.display = "none";
             } catch (error) {
-                mostrarAvisoBypass();
-            } {
+                console.warn("Bloqueio de CORS local detectado.");
+                document.getElementById("banner-alerta-local").style.display = "block";
+                showToast("Navegador bloqueou conexão local. Use o botão de emergência se necessário.", "error");
+            } finally {
                 btn.disabled = false; btn.innerText = "🔄 Sincronizar Sheets";
             }
-        }
-
-        function mostrarAvisoBypass() {
-            document.getElementById("caixa-insights-postmaster").className = "analise-box erro-conexao";
-            document.getElementById("caixa-insights-postmaster").innerHTML = `
-                <strong>⚠️ RESTRIÇÃO DE REQUISIÇÃO LOCAL (CORS NAVEGADOR)</strong><br>
-                Como o HTML está rodando direto do seu computador, o navegador bloqueia conexões automáticas. <br>
-                <strong>Ficará 100% automático assim que você subir para o GitHub Pages.</strong> Enquanto testa local, use o botão de emergência:<br>
-                <button class="btn-bypass" onclick="document.getElementById('bypass-file-input').click()">📂 Carregar CSV Baixado Manualmente</button>
-            `;
         }
 
         function processarBypassManual(event) {
@@ -404,8 +422,8 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 if (processarTextoCSV(e.target.result)) {
-                    showToast("Planilha manual processada!", "success");
-                    document.getElementById("caixa-insights-postmaster").className = "analise-box";
+                    showToast("Planilha manual processada com sucesso!", "success");
+                    document.getElementById("banner-alerta-local").style.display = "none";
                     renderDashboardCompleto();
                 }
             };
@@ -531,7 +549,7 @@
                     </tr>`;
                 }).join('');
             }
-            if (DADOS.projetosConfig[projId] && document.getElementById("caixa-insights-postmaster").className === "analise-box") renderInsights();
+            if (DADOS.projetosConfig[projId]) renderInsights();
             if (atualizarSpamDia) renderCharts();
         }
 
