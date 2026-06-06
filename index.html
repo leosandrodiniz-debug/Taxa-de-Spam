@@ -848,7 +848,7 @@
                 }
             });
 
-            // 2. GRÁFICO DE LINHA - TAXA DE SPAM POR DIA (Média real compatível com vírgulas)
+            // 2. GRÁFICO DE LINHA - TAXA DE SPAM POR DIA (MÉDIA)
             const ctxDailySpam = document.getElementById('dailySpamLineChart').getContext('2d');
             if (dailySpamLineChartInstance) { dailySpamLineChartInstance.destroy(); }
 
@@ -916,7 +916,7 @@
                 }
             });
 
-            // 3. GRÁFICO POR CAMPANHA / HORÁRIO (Taxa média de Spam compatível com vírgulas)
+            // 3. GRÁFICO POR CAMPANHA / HORÁRIO (Taxa média de Spam)
             const ctxCampaign = document.getElementById('campaignSpamChart').getContext('2d');
             if (campaignSpamChartInstance) { campaignSpamChartInstance.destroy(); }
 
@@ -975,9 +975,14 @@
             });
         }
 
-        // Motor de Parsing para CSVs com autodeteção robusta de separador (Vírgula vs Ponto e Vírgula)
+        // Motor de Parsing para CSVs com autodeteção de separador e remoção de UTF-8 BOM e aspas duplas
         function parseCSV(text) {
-            // Analisa a primeira linha para autodetectar o separador regional correcto
+            // Remove o caractere invisível UTF-8 BOM se estiver presente na resposta do Google Sheets
+            if (text.charCodeAt(0) === 0xFEFF || text.startsWith('\ufeff')) {
+                text = text.substring(1);
+            }
+
+            // Split de linhas com suporte completo a delimitador
             const firstLine = text.split('\n')[0] || '';
             const commaCount = (firstLine.match(/,/g) || []).length;
             const semiCount = (firstLine.match(/;/g) || []).length;
@@ -1006,7 +1011,8 @@
             if (row.length > 1 || row[0] !== "") { lines.push(row); }
             if (lines.length === 0) return { headers: [], data: [] };
 
-            const headers = lines[0].map(h => h.trim().toLowerCase());
+            // Limpa aspas redundantes e espaços em branco das colunas de cabeçalho
+            const headers = lines[0].map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
             const data = [];
 
             for (let i = 1; i < lines.length; i++) {
@@ -1017,7 +1023,10 @@
 
                 const rowObj = {};
                 headers.forEach((header, index) => {
-                    rowObj[header] = values[index] ? values[index].trim() : "";
+                    let val = values[index] ? values[index].trim() : "";
+                    // Limpa aspas encapsuladas redundantes do valor de célula
+                    val = val.replace(/^["']|["']$/g, '').trim();
+                    rowObj[header] = val;
                 });
                 data.push(rowObj);
             }
@@ -1032,7 +1041,7 @@
                 return headers.find(h => possibleNames.includes(h.toLowerCase().trim()));
             };
 
-            const dataKey = findKey(['data', 'date', 'dia', 'período']);
+            const dataKey = findKey(['data', 'date', 'dia', 'período', 'periodo']);
             const enviosKey = findKey(['envios', 'volume', 'sent', 'quantidade']);
             const ge03Key = findKey(['≥ 0,3', '>=0,3', '>=0.3', 'ge0.3', 'ge03', '>= 0.3', '>= 0,3']);
             
@@ -1187,189 +1196,4 @@
             
             // Define por padrão a URL de exportação direta fornecida por você
             if (!input.value.trim() && selectedProject && selectedProject.id === 404) {
-                input.value = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSePugXgmjZTIO3_a46XJCGpjDHSSSCzUDR-Jk9OkPMafPffOIVr-M23se--EiwGrr6XE08nWMnIUwf/pub?gid=372389848&single=true&output=csv";
-            }
-            
-            modal.classList.remove('opacity-0', 'pointer-events-none');
-            content.classList.remove('translate-y-4');
-        }
-
-        function closeSyncModal() {
-            const modal = document.getElementById('syncModal');
-            const content = document.getElementById('syncModalContent');
-            modal.classList.add('opacity-0', 'pointer-events-none');
-            content.classList.add('translate-y-4');
-        }
-
-        function handleSyncSubmit() {
-            const url = document.getElementById('sheetUrlInput').value.trim();
-            if (!url) {
-                showToast("Por favor, forneça um link válido.");
-                return;
-            }
-            if (selectedProject) {
-                syncGoogleSheets(url, selectedProject.id);
-                closeSyncModal();
-            }
-        }
-
-        function clearSyncUrl() {
-            if (selectedProject) {
-                localStorage.removeItem(`gspread_url_${selectedProject.id}`);
-                document.getElementById('sheetUrlInput').value = "";
-                document.getElementById('syncIndicator').classList.add('hidden');
-                showToast("Vínculo removido. Restaurando padrão local...");
-                closeSyncModal();
-                openDashboard(selectedProject.id); // Recarrega do padrão local
-            }
-        }
-
-        // Filtro interativo na tabela "HISTÓRICO DIÁRIO"
-        function filterTable() {
-            const input = document.getElementById("tableSearch");
-            const filter = input.value.toUpperCase();
-            const table = document.getElementById("historyTable");
-            const tr = table.getElementsByTagName("tr");
-
-            for (let i = 1; i < tr.length; i++) {
-                const td = tr[i].getElementsByTagName("td")[0]; 
-                if (td) {
-                    const txtValue = td.textContent || td.innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        tr[i].style.display = "";
-                    } else {
-                        tr[i].style.display = "none";
-                    }
-                }
-            }
-        }
-
-        // Filtros de Período do Dashboard
-        function setPeriod(period) {
-            ['7d', '30d', '90d', 'all'].forEach(p => {
-                const btn = document.getElementById(`btn-${p}`);
-                btn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 text-slate-500 hover:text-[#0b2240]";
-            });
-            const activeBtn = document.getElementById(`btn-${period}`);
-            activeBtn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 bg-indigo-50 text-indigo-600 shadow-sm";
-
-            if (selectedProject) {
-                const factor = period === '7d' ? 0.7 : period === '90d' ? 1.4 : period === 'all' ? 2 : 1;
-                const baseEnvios = parseInt(selectedProject.mEnvios.replace(/\./g, ''));
-                
-                document.getElementById('metricEnvios').innerText = Math.round(baseEnvios * factor).toLocaleString('pt-BR');
-                document.getElementById('metricDias').innerText = period === '7d' ? '7' : period === '30d' ? '30' : period === '90d' ? '90' : '150';
-                
-                activeChart.data.datasets.forEach(dataset => {
-                    if (!dataset.label.includes('Teto')) {
-                        dataset.data = dataset.data.map(val => val !== null ? Math.min(0.55, Math.max(0.01, val * (0.8 + Math.random() * 0.4))) : null);
-                    }
-                });
-                activeChart.update();
-
-                dailyVolumeChartInstance.data.datasets[0].data = dailyVolumeChartInstance.data.datasets[0].data.map(val => Math.round(val * factor * (0.9 + Math.random() * 0.2)));
-                dailyVolumeChartInstance.update();
-
-                dailySpamLineChartInstance.data.datasets[0].data = dailySpamLineChartInstance.data.datasets[0].data.map(val => Math.min(0.55, Math.max(0.01, val * (0.8 + Math.random() * 0.4))));
-                dailySpamLineChartInstance.update();
-
-                campaignSpamChartInstance.data.datasets[0].data = campaignSpamChartInstance.data.datasets[0].data.map(val => Math.min(0.55, Math.max(0.01, val * (0.8 + Math.random() * 0.4))));
-                campaignSpamChartInstance.update();
-
-                showToast(`Filtrado por ${period === 'all' ? 'todo o período' : period}`);
-            }
-        }
-
-        // Exportador de CSV
-        function downloadCSV() {
-            if (!selectedProject) return;
-            
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "DATA,ENVIOS,GE03,H1,H9,H12,H14,H15,H16,H18,H19,H21\n";
-            
-            selectedProject.detalhesTabela.forEach(r => {
-                csvContent += `${r.data},${r.envios.replace('.', '')},${r.ge03},${r.h1},${r.h9},${r.h12},${r.h14},${r.h15},${r.h16},${r.h18},${r.h19},${r.h21}\n`;
-            });
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `historico_${selectedProject.title.toLowerCase().replace(' ', '_')}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            showToast("Planilha CSV baixada!");
-        }
-
-        // Animação de atualizar o Card individual do Hub
-        function refreshSingleCard(btnElement) {
-            const icon = btnElement.querySelector('i');
-            icon.classList.add('fa-spin');
-            btnElement.disabled = true;
-            
-            setTimeout(() => {
-                icon.classList.remove('fa-spin');
-                btnElement.disabled = false;
-                showToast("Dados do projeto atualizados!");
-            }, 1000);
-        }
-
-        // Atualização geral
-        function triggerRefresh() {
-            const icon = document.getElementById('refreshIconDash');
-            icon.classList.add('fa-spin');
-            
-            setTimeout(() => {
-                icon.classList.remove('fa-spin');
-                if (selectedProject) {
-                    const savedUrl = localStorage.getItem(`gspread_url_${selectedProject.id}`);
-                    const urlToSync = savedUrl || selectedProject.defaultSheetUrl;
-                    if (urlToSync) {
-                        syncGoogleSheets(urlToSync, selectedProject.id);
-                    } else {
-                        // Modo simulação padrão
-                        const randomSpamVal = (0.05 + Math.random() * 0.35);
-                        let label = "✅ APROVADO";
-                        if (randomSpamVal >= 0.10 && randomSpamVal < 0.30) { label = "⚠️ OTIMIZAR"; }
-                        else if (randomSpamVal >= 0.30) { label = "❌ REMOVER"; }
-
-                        const formattedSpamLabel = `${label} - ${randomSpamVal.toFixed(2)}%`;
-                        document.getElementById('metricSpam').innerText = randomSpamVal.toFixed(2) + "%";
-                        
-                        const badge = document.getElementById('dashStatusBadge');
-                        badge.innerText = formattedSpamLabel;
-                        badge.className = "text-xs font-black px-4 py-2 rounded-full border tracking-wider " + getBadgeColorClass(formattedSpamLabel);
-
-                        activeChart.data.datasets.forEach(dataset => {
-                            if (!dataset.label.includes('Teto')) {
-                                dataset.data = dataset.data.map(val => Math.min(0.55, Math.max(0.01, val * (0.9 + Math.random() * 0.2))));
-                            }
-                        });
-                        activeChart.update();
-                        buildComplementaryCharts(selectedProject);
-                    }
-                    
-                    const agora = new Date();
-                    document.getElementById('dashUpdateTime').innerText = agora.toLocaleDateString('pt-BR') + ", " + agora.toLocaleTimeString('pt-BR');
-                }
-                showToast("Métricas atualizadas!");
-            }, 1200);
-        }
-
-        // Toasts
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            const text = document.getElementById('toastText');
-            text.innerText = message;
-            
-            toast.classList.remove('opacity-0', 'translate-y-20', 'pointer-events-none');
-            toast.classList.add('opacity-100', 'translate-y-0');
-
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-20', 'pointer-events-none');
-                toast.classList.remove('opacity-100', 'translate-y-0');
-            }, 3000);
-        }
-    </script>
-</body>
-</html>
+                input.value =
