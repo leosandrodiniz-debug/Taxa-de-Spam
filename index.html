@@ -109,6 +109,7 @@
 
         /* BROADCAST TABLE FILTER BAR */
         .table-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: #F8FAFC; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px; }
+        .table-toolbar .erro-inline-msg { background: #FEF2F2; border: 1px solid #FCA5A5; color: #B91C1C; font-size: 12px; padding: 6px 12px; border-radius: 6px; font-weight: 600; }
         .table-title { font-weight: 700; color: var(--navy-dark); font-size: 11px; text-transform: uppercase; }
         
         .filter-buttons { display: flex; gap: 6px; }
@@ -201,7 +202,7 @@
                 <div class="table-container">
                     <div class="table-toolbar">
                         <div class="table-title">📋 Campanhas de Broadcast Auditadas</div>
-                        <div class="filter-buttons">
+                        <div id="wrapper-status-msg"></div> <div class="filter-buttons">
                             <button class="btn-filter active-filter" id="btn-filt-todos" onclick="alterarFiltroCampanha('todos')">Todos (<span id="cnt-todos">0</span>)</button>
                             <button class="btn-filter" id="btn-filt-aprovado" onclick="alterarFiltroCampanha('aprovado')">Aprovados 🟢 (<span id="cnt-aprovado">0</span>)</button>
                             <button class="btn-filter" id="btn-filt-otimizar" onclick="alterarFiltroCampanha('otimizar')">Otimizar 🟡 (<span id="cnt-otimizar">0</span>)</button>
@@ -247,7 +248,7 @@
     <div id="custom-toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 8px;"></div>
 
     <script>
-        // CADASTRO DE GIDs: Insira o número do gid de cada aba correspondente aqui
+        // CADASTRO DE GIDs OPERACIONAIS (Cada número representa sua respectiva aba)
         const PROJETOS_GIDS = {
             "2513": "599913369", // Já travado no GID que você enviou!
             "404": "COLOQUE_O_GID_DA_ABA_404", 
@@ -322,6 +323,7 @@
             return cols;
         }
 
+        // NOVO MOTOR AUTO-ADAPTÁVEL: Lê planilhas de 2 ou 3 colunas sem quebrar
         function processarTextoCSV(csvText) {
             const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== "");
             if (lines.length === 0) return false;
@@ -329,24 +331,22 @@
             const cabecalhoTeste = lines[0] || "";
             const separador = (cabecalhoTeste.split(';').length > cabecalhoTeste.split(',').length) ? ';' : ',';
 
-            let headerIdx = -1;
-            for (let i = 0; i < lines.length; i++) {
+            let headerIdx = 0;
+            for (let i = 0; i < Math.min(lines.length, 5); i++) {
                 const lineLower = lines[i].toLowerCase();
-                if (lineLower.includes("data") || lineLower.includes("campanha") || lineLower.includes("identificador") || lineLower.includes("spam") || lineLower.includes("broadcast")) {
+                if (lineLower.includes("data") || lineLower.includes("date") || lineLower.includes("spam") || lineLower.includes("taxa")) {
                     headerIdx = i;
                     break;
                 }
             }
-            if (headerIdx === -1) headerIdx = 0;
 
-            const headerCols = dividirLinhaCSV(lines[headerIdx], separador).map(c => c.toLowerCase());
+            const headerCols = dividirLinhaCSV(lines[headerIdx], separador).map(c => c.toLowerCase().trim());
             let dataColIdx = headerCols.findIndex(c => c.includes("data") || c.includes("date"));
-            let campanhaColIdx = headerCols.findIndex(c => c.includes("campanha") || c.includes("identificador") || c.includes("id") || c.includes("broadcast"));
             let spamColIdx = headerCols.findIndex(c => c.includes("spam") || c.includes("taxa") || c.includes("%"));
+            let campanhaColIdx = headerCols.findIndex(c => c.includes("campanha") || c.includes("identificador") || c.includes("id") || c.includes("broadcast"));
 
             if (dataColIdx === -1) dataColIdx = 0;
-            if (campanhaColIdx === -1) campanhaColIdx = 1;
-            if (spamColIdx === -1) spamColIdx = 2;
+            if (spamColIdx === -1) spamColIdx = headerCols.length > 1 ? headerCols.length - 1 : 1;
 
             const dataLines = lines.slice(headerIdx + 1);
             const currentProjId = DADOS.activeProjectId;
@@ -361,15 +361,23 @@
 
             dataLines.forEach(line => {
                 const cols = dividirLinhaCSV(line, separador);
-                if (cols.length <= Math.max(dataColIdx, campanhaColIdx, spamColIdx)) return;
+                if (cols.length <= Math.max(dataColIdx, spamColIdx)) return;
 
                 const rawDate = cols[dataColIdx]; 
-                const rawCampaign = cols[campanhaColIdx]; 
                 const rawSpam = cols[spamColIdx];
+                
+                let rawCampaign = "";
+                if (campanhaColIdx !== -1 && cols[campanhaColIdx]) {
+                    rawCampaign = cols[campanhaColIdx];
+                } else {
+                    // Placeholder inteligente caso a aba só tenha Data e Spam
+                    rawCampaign = `Broadcast Lote - Mapeado (${rawDate.trim()})`;
+                }
                 
                 const dateFormatted = limparEFormatarData(rawDate);
                 if (!dateFormatted) return;
 
+                if (!rawSpam) return;
                 let spamVal = parseFloat(rawSpam.replace("%", "").replace(",", "."));
                 if (isNaN(spamVal)) return;
 
@@ -457,28 +465,31 @@
 
         async function sincronizarGoogleSheets() {
             const btn = document.getElementById("btn-sync-sheets");
+            const msgWrapper = document.getElementById("wrapper-status-msg");
             btn.disabled = true; btn.innerText = "⏳ Sincronizando...";
-            
+            msgWrapper.innerHTML = ""; // Limpa avisos
+
             const currentProjId = DADOS.activeProjectId;
             const targetGid = PROJETOS_GIDS[currentProjId];
 
             if (!targetGid || targetGid.includes("COLOQUE")) {
-                showToast(`Insira o número de GID do Projeto ${currentProjId} no código JavaScript.`, "error");
+                msgWrapper.innerHTML = `<span class="erro-inline-msg">⚠️ GID do Projeto ${currentProjId} não configurado no código JS.</span>`;
                 btn.disabled = false; btn.innerText = "🔄 Sincronizar Sheets";
                 reconstruirProjetosEAbas();
                 return;
             }
             
             try {
+                // Força a URL a requisitar a tabela bruta em formato CSV puro para o motor ler as linhas
                 const targetUrl = `https://docs.google.com/spreadsheets/d/e/2PACX-1vSePugXgmjZTIO3_a46XJCGpjDHSSSCzUDR-Jk9OkPMafPffOIVr-M23se--EiwGrr6XE08nWMnIUwf/pub?gid=${targetGid}&output=csv&_nocache=${Date.now()}`;
                 
                 const response = await fetch(targetUrl);
                 if (!response.ok) throw new Error();
                 const csvText = await response.text();
                 
-                // SISTEMA ANTI-ERRO: Bloqueia e avisa se o link retornado for uma página da web (pubhtml)
+                // BLOQUEIO INTELIGENTE DE CRAWLER: Detecta se o link gerou uma página Web em vez do arquivo CSV
                 if (csvText.includes("<html") || csvText.includes("<!DOCTYPE")) {
-                    showToast("ERRO DE CONFIGURAÇÃO: A aba no Google Sheets foi publicada como 'Página da Web'. Altere para 'Valores separados por vírgula (.csv)' no menu 'Link' da planilha.", "error");
+                    msgWrapper.innerHTML = `<span class="erro-inline-msg">❌ FORMATO INVÁLIDO: Mude a publicação de 'Página da Web' para 'Valores separados por vírgula (.csv)' no menu Link do Sheets.</span>`;
                     btn.disabled = false; btn.innerText = "🔄 Sincronizar Sheets";
                     reconstruirProjetosEAbas();
                     return;
@@ -488,11 +499,11 @@
                     showToast(`Aba do Projeto ${currentProjId} sincronizada com sucesso!`, "success");
                     document.getElementById("banner-alerta-local").style.display = "none";
                 } else {
-                    showToast("Planilha vazia ou com formato incorreto.", "error");
+                    msgWrapper.innerHTML = `<span class="erro-inline-msg">⚠️ Estrutura vazia ou sem linhas válidas detectada na aba.</span>`;
                 }
             } catch (error) {
                 document.getElementById("banner-alerta-local").style.display = "block";
-                showToast("Bloqueio de CORS detectado.", "error");
+                showToast("Bloqueio de CORS detectado localmente.", "error");
                 reconstruirProjetosEAbas();
             } finally {
                 btn.disabled = false; btn.innerText = "🔄 Sincronizar Sheets";
@@ -560,7 +571,6 @@
             });
         }
 
-        // CRIAÇÃO DA GRADE DE CALENDÁRIO
         function buildCalendarGrids() {
             let dates = Object.keys(LOGS_PLANILHA); let months = [];
             if (dates.length === 0) months = [{ month: 5, year: 2026 }];
@@ -646,7 +656,7 @@
 
             const tbody = document.getElementById("tabela-broadcast-dados").querySelector("tbody");
             if(campanhasExibidas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:24px;">Nenhuma campanha ativa para o Projeto ${projId} neste período (Aba vazia).</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:24px;">Nenhuma campanha ativa para o Projeto ${projId} neste período.</td></tr>`;
             } else {
                 tbody.innerHTML = campanhasExibidas.map(c => {
                     let statusLabel = c.spam <= 0.10 ? "Aprovado" : (c.spam < 0.30 ? "Otimizar" : "Remover");
