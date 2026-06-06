@@ -55,7 +55,7 @@
         .hub-card.active-main { border: 2px solid var(--navy-dark); background-color: #F8FAFC; }
         .hub-indicator { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; border-top-left-radius: 10px; border-bottom-left-radius: 10px; }
 
-        /* FILTRO DE CALENDÁRIO CORPORATIVO */
+        /* FILTRO DE CALENDÁRIO */
         .filtro-master-wrapper { display: flex; justify-content: flex-end; margin-bottom: 24px; position: relative; }
         .trigger-datepicker { 
             background: #FFFFFF; border: 1px solid var(--border-color); padding: 8px 20px; 
@@ -95,17 +95,6 @@
 
         .chart-card { background: white; padding: 24px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; }
         .chart-container { position: relative; height: 290px; min-height: 290px; width: 100%; }
-
-        .analise-box { background-color: #FFFDF5; border-left: 4px solid var(--alert-yellow); border-radius: 8px; padding: 16px; margin-bottom: 20px; }
-        .analise-box.erro-conexao { background-color: #FEF2F2; border-left-color: var(--alert-red); color: #991B1B; padding: 16px; margin-bottom: 20px; border-radius: 8px; }
-
-        .btn-bypass {
-            background-color: var(--purple-select); color: white; border: none; padding: 8px 16px;
-            border-radius: 20px; font-size: 12px; font-weight: 600; margin-top: 12px; cursor: pointer;
-            display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(79, 70, 229, 0.2);
-            transition: all 0.2s;
-        }
-        .btn-bypass:hover { background-color: #3b31c4; transform: translateY(-1px); }
 
         /* TABLES */
         .table-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: #F8FAFC; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px; }
@@ -150,7 +139,7 @@
             </div>
             <div class="header-controls">
                 <button class="btn-sync" id="btn-sync-sheets" onclick="sincronizarGoogleSheets()">
-                    <span>🔄 Sincronizar Base Ativa</span>
+                    <span>🔄 Sincronizar Base Bruta</span>
                 </button>
                 <span class="badge-sem-aquisicao">Selo: SEM Aquisição</span>
             </div>
@@ -200,7 +189,7 @@
                         <div class="table-title">📋 Campanhas de Broadcast Auditadas</div>
                         <div class="filter-buttons">
                             <button class="btn-filter active-filter" id="btn-filt-todos" onclick="alterarFiltroCampanha('todos')">Todos (<span id="cnt-todos">0</span>)</button>
-                            <button class="btn-filter" id="btn-filter" id="btn-filt-aprovado" onclick="alterarFiltroCampanha('aprovado')">Aprovados 🟢 (<span id="cnt-aprovado">0</span>)</button>
+                            <button class="btn-filter" id="btn-filt-aprovado" onclick="alterarFiltroCampanha('aprovado')">Aprovados 🟢 (<span id="cnt-aprovado">0</span>)</button>
                             <button class="btn-filter" id="btn-filt-otimizar" onclick="alterarFiltroCampanha('otimizar')">Otimizar 🟡 (<span id="cnt-otimizar">0</span>)</button>
                             <button class="btn-filter" id="btn-filt-remover" onclick="alterarFiltroCampanha('remover')">Remover 🔴 (<span id="cnt-remover">0</span>)</button>
                         </div>
@@ -244,7 +233,7 @@
     <div id="custom-toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 8px;"></div>
 
     <script>
-        // CADASTRE O SEU LINK DA ABA "DADOS" DO PRINT AQUI:
+        // LINK PÚBLICO DA SUA ABA "DADOS"
         const MASTER_RAW_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSePugXgmjZTIO3_a46XJCGpjDHSSSCzUDR-Jk9OkPMafPffOIVr-M23se--EiwGrr6XE08nWMnIUwf/pub?gid=372389848&single=true&output=csv";
 
         const activeCharts = { gSpamDia: null };
@@ -275,29 +264,31 @@
             setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
         }
 
-        function extractProjectId(campaignName) {
-            if (!campaignName) return null;
-            const conhecidos = Object.keys(PROJETOS_METADATA);
-            for (let id of conhecidos) {
-                if (campaignName.includes(id)) return id;
-            }
-            const match = campaignName.match(/(?:^|[^0-9])(\d{3,4})(?:[^0-9]|$)/);
-            return match ? match[1] : null;
-        }
-
-        // MOTOR DE DATA ATUALIZADO: Preserva o ano real (2025/2026) vindo do Google Sheets
+        // CONVERSOR DE DATAS PORTUGUÊS-BR SEGURO (Lê "22 de nov. de 2025" ou "2025-11-22")
         function limparEFormatarData(rawDate) {
             if (!rawDate) return null;
-            let limpo = rawDate.trim().replace(/-/g, '/');
-            let partes = limpo.split('/');
-            if (partes.length === 3) {
-                let dia, mes, ano;
-                if (partes[0].length === 4) { // YYYY/MM/DD
-                    ano = partes[0]; mes = partes[1]; dia = partes[2];
-                } else { // DD/MM/YYYY
-                    dia = partes[0]; mes = partes[1]; ano = partes[2];
+            let text = rawDate.toLowerCase().trim();
+            
+            if (text.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                let p = text.split('-');
+                return `${p[2]}/${p[1]}/${p[0]}`;
+            }
+            
+            const meses = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+            let dia = text.match(/^\d+/);
+            let ano = text.match(/\d{4}$/);
+            if (dia && ano) {
+                let mesIdx = meses.findIndex(m => text.includes(m));
+                if (mesIdx !== -1) {
+                    let mesStr = String(mesIdx + 1).padStart(2, '0');
+                    let diaStr = String(dia[0]).padStart(2, '0');
+                    return `${diaStr}/${mesStr}/${ano[0]}`;
                 }
-                return `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${ano}`;
+            }
+            
+            let partes = text.split('/');
+            if (partes.length === 3) {
+                return `${partes[0].padStart(2,'0')}/${partes[1].padStart(2,'0')}/${partes[2]}`;
             }
             return null;
         }
@@ -320,7 +311,7 @@
 
             const headerCols = lines[headerIdx].split(separador).map(c => c.toLowerCase().trim());
             let dataIdx = headerCols.findIndex(c => c.includes("data") || c.includes("date"));
-            let campIdx = headerCols.findIndex(c => c.includes("campanha") || c.includes("identificador") || c.includes("broadcast") || c.includes("id"));
+            let campIdx = headerCols.findIndex(c => c.includes("campanha") || c.includes("id") || c.includes("broadcast"));
             let spamIdx = headerCols.findIndex(c => c.includes("spam") || c.includes("taxa") || c.includes("%"));
 
             if (dataIdx === -1) dataIdx = 0;
@@ -331,13 +322,15 @@
             const novosLogs = {};
             let registros = 0;
 
-            dataLines.forEach(line => {
+            dataLines.forEach((line, idx) => {
                 const cols = line.split(separador).map(c => c.trim().replace(/^"|"$/g, ''));
                 if (cols.length <= Math.max(dataIdx, spamIdx)) return;
 
                 const rawDate = cols[dataIdx];
-                const rawCampaign = cols[campIdx] || `Lote Mapeado (${rawDate})`;
                 const rawSpam = cols[spamIdx];
+                let rawCampaign = campIdx !== -1 ? cols[campIdx] : `Broadcast #${idx + 1}`;
+
+                if (!rawCampaign || rawCampaign.trim() === "") rawCampaign = `Broadcast #${idx + 1}`;
 
                 const dateFormatted = limparEFormatarData(rawDate);
                 if (!dateFormatted || !rawSpam) return;
@@ -346,8 +339,8 @@
                 if (isNaN(spamVal)) return;
                 if (spamVal > 0 && spamVal < 0.05 && !rawSpam.includes("%")) spamVal = spamVal * 100;
 
-                // Roteamento preventivo: Se for UUID limpo, joga no projeto ativo selecionado
-                const projId = extractProjectId(rawCampaign) || DADOS.activeProjectId;
+                // VÍNCULO DIRETO: Atribui os dados ao card ativo que foi clicado
+                const projId = DADOS.activeProjectId;
 
                 if (!novosLogs[dateFormatted]) novosLogs[dateFormatted] = [];
                 novosLogs[dateFormatted].push({ id: rawCampaign, spam: spamVal, projId: projId });
@@ -435,7 +428,7 @@
                 }
             } catch (error) {
                 document.getElementById("banner-alerta-local").style.display = "block";
-                showToast("Erro de rede ou restrição local de CORS ativa.", "error");
+                showToast("Erro de rede local (CORS). Use o carregamento manual abaixo.", "error");
             } finally {
                 btn.disabled = false; btn.innerText = "🔄 Sincronizar Base Bruta";
             }
@@ -448,7 +441,8 @@
             const card = document.querySelector(`[data-id="${id}"]`);
             if (card) card.classList.add("active-main");
             document.getElementById("painel-auditoria-avancada").style.display = "none";
-            renderDashboardCompleto(); 
+            
+            sincronizarGoogleSheets(); 
         }
 
         function processarBypassManual(event) {
@@ -459,13 +453,13 @@
             reader.readAsText(file);
         }
 
-        // NCORAGEM OPERACIONAL DINÂMICA: Detecta o ano real da planilha e foca nele
+        // DESCOBERTA DE DATA MESTRE: Descobre o ano real da planilha (2025) dinamicamente
         function getAnchorDate() {
             let dates = Object.keys(LOGS_PLANILHA);
-            if (dates.length === 0) return new Date(2025, 10, 24); // Fallback Novembro 2025
+            if (dates.length === 0) return new Date(2025, 10, 22); 
             let maxDate = null;
             dates.forEach(dStr => {
-                let parts = dStr.split("/");
+                let parts = dStr.split("/"); 
                 let d = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
                 if (!maxDate || d > maxDate) maxDate = d;
             });
@@ -495,7 +489,6 @@
 
         function formatDateString(date) { return String(date.getDate()).padStart(2, '0') + '/' + String(date.getMonth() + 1).padStart(2, '0') + '/' + date.getFullYear(); }
 
-        // GERADOR DE CALENDÁRIO INTELIGENTE: Lê e monta os meses baseados nos dados reais da planilha
         function buildCalendarGrids() {
             const calendarArea = document.querySelector(".panel-calendar-area"); calendarArea.innerHTML = "";
             let dates = Object.keys(LOGS_PLANILHA);
@@ -573,12 +566,13 @@
 
             const tbody = document.getElementById("tabela-broadcast-dados").querySelector("tbody");
             if(campanhasExibidas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:24px;">Nenhum registro para o Projeto ${projId} neste período.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:24px;">Nenhum registro localizado para o período selecionado.</td></tr>`;
             } else {
                 tbody.innerHTML = campanhasExibidas.map(c => {
                     let label = c.spam <= 0.10 ? "Aprovado" : (c.spam < 0.30 ? "Otimizar" : "Remover");
+                    let dataCurta = c.data.split('/')[0] + '/' + c.data.split('/')[1];
                     return `<tr class="row-clicavel" onclick="inspecionarCampanhaRow(this, '${c.id}', '${c.data}', ${c.spam})">
-                        <td>${c.data.split('/')[0] + '/' + c.data.split('/')[1]}</td><td>${c.id}</td><td>${c.spam.toFixed(2)}%</td><td>${label}</td>
+                        <td>${dataCurta}</td><td>${c.id}</td><td>${c.spam.toFixed(2)}%</td><td>${label}</td>
                     </tr>`;
                 }).join('');
             }
