@@ -88,13 +88,10 @@
         .day-cell.selected-day { background: var(--purple-light) !important; color: var(--purple-select) !important; font-weight: 700; border: 1px solid var(--purple-select); border-radius: 50%; }
 
         .section-title { font-size: 14px; font-weight: 700; color: var(--navy-dark); margin: 32px 0 16px 0; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; }
-
         .card-label-header-clean { font-weight: 700; color: var(--text-dark); font-size: 12px; margin-bottom: 16px; text-transform: uppercase; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px; }
 
         .grid-graficos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 24px; }
-        @media (max-width: 1024px) { 
-            .grid-graficos { grid-template-columns: 1fr; } 
-        }
+        @media (max-width: 1024px) { .grid-graficos { grid-template-columns: 1fr; } }
 
         .chart-card { background: white; padding: 24px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; }
         .chart-container { position: relative; height: 290px; min-height: 290px; width: 100%; }
@@ -102,7 +99,6 @@
         .analise-box { background-color: #FFFDF5; border-left: 4px solid var(--alert-yellow); border-radius: 8px; padding: 16px; margin-bottom: 20px; }
         .analise-box.erro-conexao { background-color: #FEF2F2; border-left-color: var(--alert-red); color: #991B1B; }
 
-        /* BUTTON BYPASS EMERGENCY */
         .btn-bypass {
             background-color: var(--purple-select); color: white; border: none; padding: 6px 14px;
             border-radius: 4px; font-size: 12px; font-weight: 600; margin-top: 10px; cursor: pointer;
@@ -239,13 +235,10 @@
     <div id="custom-toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 8px;"></div>
 
     <script>
-        // Transforma o link normal fornecido na rota de exportação CSV estruturada
-        const SPREADSHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1_zrTPZ9tehp5YmSrBXAehqwhsc5i9JOQnP3tNUdsS2o/export?format=csv&gid=372389848";
+        // COLE SEU LINK DO 'PUBLICAR NA WEB' DO GOOGLE SHEETS (FORMATO CSV) AQUI EMBAIXO
+        const URL_PUBLICA_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSePugXgmjZTIO3_a46XJCGpjDHSSSCzUDR-Jk9OkPMafPffOIVr-M23se--EiwGrr6XE08nWMnIUwf/pub?output=csv";
 
-        const activeCharts = {
-            gSpamDia: null
-        };
-
+        const activeCharts = { gSpamDia: null };
         const PROJETOS_METADATA = {
             "404": "Geral / Projeto 404 (Solinero MX)",
             "2513": "Projeto 2513 (MX02-Ep10)",
@@ -253,66 +246,29 @@
             "2547": "Projeto 2547 (MX05-JBT)"
         };
 
-        // Memória estática segura (Carga Base real até 01/06)
+        // Dados internos de segurança padrão
         let LOGS_PLANILHA = {
-            "01/06": [
-                { id: "broad-2513-mx-ep10-d01h01-bd-6", spam: 0.70 },
-                { id: "broad-2513-mx-ep10-d01h09-bd-6", spam: 0.24 },
-                { id: "broad-2513-mx-ep10-d01h15-bd-6", spam: 0.23 },
-                { id: "broad-2513-mx-ep10-d07h21-bd-6", spam: 0.23 },
-                { id: "proj-404", spam: 0.18 }
-            ],
-            "31/05": [
-                { id: "broad-2513-mx-ep10-d06h21-bd-6", spam: 0.22 },
-                { id: "broad-2513-mx-ep10-d07h01-bd-6", spam: 0.67 },
-                { id: "broad-2513-mx-ep10-d07h09-bd-6", spam: 0.44 },
-                { id: "broad-2513-mx-ep10-d07h15-bd-6", spam: 0.65 },
-                { id: "proj-404", spam: 0.21 }
-            ]
+            "01/06": [{ id: "broad-2513-mx-ep10-d01h01-bd-6", spam: 0.70 }, { id: "proj-404", spam: 0.18 }],
+            "31/05": [{ id: "broad-2513-mx-ep10-d06h21-bd-6", spam: 0.22 }, { id: "proj-404", spam: 0.21 }]
         };
 
-        const DADOS = {
-            activeProjectId: "404", 
-            activePreset: "7d", 
-            activeFilter: "todos",
-            startDate: null, 
-            endDate: null,   
-            projetosConfig: {} 
-        };
+        const DADOS = { activeProjectId: "404", activePreset: "7d", activeFilter: "todos", startDate: null, endDate: null, projetosConfig: {} };
 
         function showToast(message, type = 'success') {
             const container = document.getElementById("custom-toast-container");
             const toast = document.createElement("div");
-            
-            toast.style.padding = '12px 20px';
-            toast.style.borderRadius = '8px';
-            toast.style.fontSize = '13px';
-            toast.style.fontWeight = '600';
-            toast.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
-            toast.style.display = 'flex';
-            toast.style.alignItems = 'center';
-            toast.style.gap = '8px';
-            toast.style.transition = 'all 0.3s ease';
+            toast.style.padding = '12px 20px'; toast.style.borderRadius = '8px'; toast.style.fontSize = '13px'; toast.style.fontWeight = '600';
+            toast.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)'; toast.style.display = 'flex'; toast.style.alignItems = 'center'; toast.style.gap = '8px'; toast.style.transition = 'all 0.3s ease';
             
             if (type === 'success') {
-                toast.style.background = 'rgba(2, 195, 154, 0.15)';
-                toast.style.border = '1px solid var(--mint)';
-                toast.style.color = '#019373';
+                toast.style.background = 'rgba(2, 195, 154, 0.15)'; toast.style.border = '1px solid var(--mint)'; toast.style.color = '#019373';
                 toast.innerHTML = `<span>✅</span> <span>${message}</span>`;
             } else {
-                toast.style.background = 'rgba(230, 57, 70, 0.15)';
-                toast.style.border = '1px solid var(--alert-red)';
-                toast.style.color = 'var(--alert-red)';
+                toast.style.background = 'rgba(230, 57, 70, 0.15)'; toast.style.border = '1px solid var(--alert-red)'; toast.style.color = 'var(--alert-red)';
                 toast.innerHTML = `<span>⚠️</span> <span>${message}</span>`;
             }
-
             container.appendChild(toast);
-            
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translateY(10px)';
-                setTimeout(() => toast.remove(), 300);
-            }, 5000);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
         }
 
         function extractProjectId(campaignName) {
@@ -327,22 +283,12 @@
             
             for (let i = 0; i < lines.length; i++) {
                 const lineLower = lines[i].toLowerCase();
-                if (lineLower.includes("data") && (lineLower.includes("campanha") || lineLower.includes("campaign")) && (lineLower.includes("spam") || lineLower.includes("taxa"))) {
+                if (lineLower.includes("data") && lineLower.includes("campanha") && (lineLower.includes("spam") || lineLower.includes("taxa"))) {
                     headerIdx = i;
                     break;
                 }
             }
             
-            if (headerIdx === -1) {
-                for (let i = 0; i < lines.length; i++) {
-                    const cols = lines[i].split(",");
-                    if (cols.length >= 3 && /^\d{4}-\d{2}-\d{2}$/.test(cols[0].trim())) {
-                        headerIdx = i - 1;
-                        break;
-                    }
-                }
-            }
-
             if (headerIdx === -1) return false;
 
             const dataLines = lines.slice(headerIdx + 1);
@@ -350,60 +296,40 @@
             let registrosContabilizados = 0;
 
             dataLines.forEach(line => {
-                const cols = [];
-                let current = "";
-                let inQuotes = false;
+                const cols = []; let current = ""; let inQuotes = false;
                 for (let i = 0; i < line.length; i++) {
                     const char = line[i];
-                    if (char === '"') {
-                        inQuotes = !inQuotes;
-                    } else if (char === ',' && !inQuotes) {
-                        cols.push(current.trim());
-                        current = "";
-                    } else {
-                        current += char;
-                    }
+                    if (char === '"') inQuotes = !inQuotes;
+                    else if (char === ',' && !inQuotes) { cols.push(current.trim()); current = ""; }
+                    else current += char;
                 }
                 cols.push(current.trim());
 
                 if (cols.length < 3) return;
-
-                const rawDate = cols[0];
-                const rawCampaign = cols[1];
-                const rawSpam = cols[2];
-
+                const rawDate = cols[0]; const rawCampaign = cols[1]; const rawSpam = cols[2];
                 if (!rawDate || !rawCampaign || !rawSpam) return;
-
-                if (!/^\d{4}-\d{2}-\d{2}$/.test(rawDate) && !/^\d{2}\/\d{2}\/\d{4}$/.test(rawDate)) return;
 
                 let dateFormatted = "";
                 if (rawDate.includes("-")) {
                     const parts = rawDate.split("-");
-                    dateFormatted = `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0 Genn')}`;
-                    dateFormatted = `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}`;
+                    if(parts[0].length === 4) dateFormatted = `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}`;
                 } else if (rawDate.includes("/")) {
                     const parts = rawDate.split("/");
                     dateFormatted = `${parts[0].padStart(2, '0')}/${parts[1].padStart(2, '0')}`;
                 }
 
+                if (!dateFormatted) return;
+
                 let spamVal = parseFloat(rawSpam.replace("%", "").replace(",", "."));
                 if (isNaN(spamVal)) return;
 
-                if (spamVal > 0 && spamVal < 0.05 && !rawSpam.includes("%")) {
-                    spamVal = spamVal * 100;
-                }
+                if (spamVal > 0 && spamVal < 0.05 && !rawSpam.includes("%")) spamVal = spamVal * 100;
 
                 const projId = extractProjectId(rawCampaign);
                 if (!projId) return;
 
-                if (!novosLogs[dateFormatted]) {
-                    novosLogs[dateFormatted] = [];
-                }
-
-                novosLogs[dateFormatted].push({
-                    id: rawCampaign,
-                    spam: spamVal
-                });
+                if (!novosLogs[dateFormatted]) novosLogs[dateFormatted] = [];
+                novosLogs[dateFormatted].push({ id: rawCampaign, spam: spamVal });
                 registrosContabilizados++;
             });
 
@@ -422,8 +348,7 @@
                     const id = extractProjectId(c.id);
                     if (id) {
                         if (!detectados[id]) detectados[id] = { totalSpam: 0, count: 0 };
-                        detectados[id].totalSpam += c.spam;
-                        detectados[id].count++;
+                        detectados[id].totalSpam += c.spam; detectados[id].count++;
                     }
                 });
             }
@@ -431,82 +356,57 @@
             DADOS.projetosConfig = {};
             for (let id in detectados) {
                 const avg = detectados[id].totalSpam / detectados[id].count;
-                let status = "bom";
-                if (avg >= 0.30) status = "ruim";
-                else if (avg >= 0.10) status = "medio";
-
                 DADOS.projetosConfig[id] = {
                     nome: PROJETOS_METADATA[id] || `Projeto ${id} (Autodetectado)`,
-                    status: status,
+                    status: avg >= 0.30 ? "ruim" : (avg >= 0.10 ? "medio" : "bom"),
                     mediaSpam: parseFloat(avg.toFixed(3))
                 };
             }
-
-            const idsDisponiveis = Object.keys(DADOS.projetosConfig);
-            if (idsDisponiveis.length > 0 && !DADOS.projetosConfig[DADOS.activeProjectId]) {
-                DADOS.activeProjectId = idsDisponiveis.includes("404") ? "404" : idsDisponiveis[0];
-            }
-
-            buildCalendarGrids();
-            renderHubTopInitial();
-            selectPreset(DADOS.activePreset);
+            buildCalendarGrids(); renderHubTopInitial(); selectPreset(DADOS.activePreset);
         }
 
         async function sincronizarGoogleSheets() {
+            if (URL_PUBLICA_CSV === "https://docs.google.com/spreadsheets/d/e/2PACX-1vSePugXgmjZTIO3_a46XJCGpjDHSSSCzUDR-Jk9OkPMafPffOIVr-M23se--EiwGrr6XE08nWMnIUwf/pub?output=csv") {
+                mostrarAvisoBypass();
+                return;
+            }
+
             const btn = document.getElementById("btn-sync-sheets");
-            btn.disabled = true;
-            btn.innerText = "⏳ Sincronizando...";
+            btn.disabled = true; btn.innerText = "⏳ Sincronizando...";
             
             try {
-                const urlCompleta = `${SPREADSHEET_CSV_URL}&_nocache=${Date.now()}`;
-                const response = await fetch(urlCompleta);
-                
-                if (!response.ok) throw new Error("Erro de rede");
-
+                const response = await fetch(`${URL_PUBLICA_CSV}&_nocache=${Date.now()}`);
+                if (!response.ok) throw new Error();
                 const csvText = await response.text();
-                const sucesso = processarTextoCSV(csvText);
-
-                if (sucesso) {
-                    showToast("Sucesso! Dashboard conectado e sincronizado com o Google Sheets.", "success");
-                    document.getElementById("caixa-insights-postmaster").className = "analise-box";
-                } else {
-                    throw new Error("Formato inválido");
-                }
+                processarTextoCSV(csvText);
+                showToast("Sincronizado com sucesso com o Google Sheets.", "success");
+                document.getElementById("caixa-insights-postmaster").className = "analise-box";
             } catch (error) {
-                console.error("Erro na sincronização direta:", error);
-                showToast("Erro de Conexão. Baixe o CSV do Sheets e use o botão de emergência abaixo.", "error");
-                
-                // Ativa o bypass manual visível no bloco de aviso para não travar o usuário localmente
-                document.getElementById("caixa-insights-postmaster").className = "analise-box erro-conexao";
-                document.getElementById("caixa-insights-postmaster").innerHTML = `
-                    <strong>⚠️ RESTRIÇÃO DE EXECUÇÃO LOCAL DETECTADA (CORS DE NAVEGADOR)</strong><br>
-                    O navegador bloqueou a busca automática online porque o HTML está rodando direto do seu computador. <br>
-                    <span style="font-weight:700;">Não se preocupe:</span> Esse aviso sumirá e funcionará sozinho assim que colocar no <strong>GitHub Pages</strong>.<br>
-                    <button class="btn-bypass" onclick="dispararBypassCliqueInput()">📂 Carregar arquivo CSV Manualmente (Para testar local)</button>
-                `;
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "🔄 Sincronizar Sheets";
+                mostrarAvisoBypass();
+            } {
+                btn.disabled = false; btn.innerText = "🔄 Sincronizar Sheets";
             }
         }
 
-        function dispararBypassCliqueInput() {
-            document.getElementById("bypass-file-input").click();
+        function mostrarAvisoBypass() {
+            document.getElementById("caixa-insights-postmaster").className = "analise-box erro-conexao";
+            document.getElementById("caixa-insights-postmaster").innerHTML = `
+                <strong>⚠️ RESTRIÇÃO DE REQUISIÇÃO LOCAL (CORS NAVEGADOR)</strong><br>
+                Como o HTML está rodando direto do seu computador, o navegador bloqueia conexões automáticas. <br>
+                <strong>Ficará 100% automático assim que você subir para o GitHub Pages.</strong> Enquanto testa local, use o botão de emergência:<br>
+                <button class="btn-bypass" onclick="document.getElementById('bypass-file-input').click()">📂 Carregar CSV Baixado Manualmente</button>
+            `;
         }
 
         function processarBypassManual(event) {
             const file = event.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = function(e) {
-                const sucesso = processarTextoCSV(e.target.result);
-                if (sucesso) {
-                    showToast("Planilha local processada via bypass manual com sucesso!", "success");
+                if (processarTextoCSV(e.target.result)) {
+                    showToast("Planilha manual processada!", "success");
                     document.getElementById("caixa-insights-postmaster").className = "analise-box";
                     renderDashboardCompleto();
-                } else {
-                    showToast("Estrutura do arquivo CSV inválida.", "error");
                 }
             };
             reader.readAsText(file);
@@ -526,174 +426,71 @@
 
         function updateActiveDateRange() {
             const anchor = getAnchorDate();
-            const preset = DADOS.activePreset;
-            if (preset === "custom") return;
+            if (DADOS.activePreset === "custom") return;
             DADOS.endDate = new Date(anchor);
-            
-            if (preset === "hoje") {
-                DADOS.startDate = new Date(anchor);
-            } else if (preset === "ontem") {
-                let yesterday = new Date(anchor); yesterday.setDate(yesterday.getDate() - 1);
-                DADOS.startDate = yesterday; DADOS.endDate = yesterday;
-            } else if (preset === "7d") {
-                let start = new Date(anchor); start.setDate(start.getDate() - 6);
-                DADOS.startDate = start;
-            } else if (preset === "30d") {
-                let start = new Date(anchor); start.setDate(start.getDate() - 29);
-                DADOS.startDate = start;
-            } else if (preset === "90d") {
-                let start = new Date(anchor); start.setDate(start.getDate() - 89);
-                DADOS.startDate = start;
-            } else if (preset === "mes") {
-                DADOS.startDate = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
-            }
+            if (DADOS.activePreset === "hoje") DADOS.startDate = new Date(anchor);
+            else if (DADOS.activePreset === "ontem") { let y = new Date(anchor); y.setDate(y.getDate() - 1); DADOS.startDate = y; DADOS.endDate = y; }
+            else if (DADOS.activePreset === "7d") { let s = new Date(anchor); s.setDate(s.getDate() - 6); DADOS.startDate = s; }
+            else if (DADOS.activePreset === "30d") { let s = new Date(anchor); s.setDate(s.getDate() - 29); DADOS.startDate = s; }
+            else if (DADOS.activePreset === "mes") DADOS.startDate = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
         }
 
-        function toggleDatePickerPanel(event) {
-            event.stopPropagation();
-            const panel = document.getElementById("modal-datepicker-interface");
-            panel.style.display = panel.style.display === "grid" ? "none" : "grid";
-        }
-
-        function selectPreset(preset) {
-            DADOS.activePreset = preset;
-            document.querySelectorAll(".preset-btn").forEach(btn => btn.classList.remove("active-preset"));
-            const activeBtn = document.getElementById(`preset-${preset}`);
-            if (activeBtn) activeBtn.classList.add("active-preset");
+        function toggleDatePickerPanel(event) { event.stopPropagation(); const p = document.getElementById("modal-datepicker-interface"); p.style.display = p.style.display === "grid" ? "none" : "grid"; }
+        function selectPreset(preset) { DADOS.activePreset = preset; selectPresetDisplay(); }
+        function selectPresetDisplay() {
             updateActiveDateRange();
-            
-            let label = "Últimos 7 dias";
-            if (preset === "hoje") label = `Hoje (${formatDateString(DADOS.startDate)})`;
-            else if (preset === "ontem") label = `Ontem (${formatDateString(DADOS.startDate)})`;
-            else if (preset === "mes") label = `Mês até hoje`;
-            else if (preset === "7d") label = `Últimos 7 dias`;
-            
-            document.getElementById("txt-faixa-ativa-label").innerText = label;
-            refreshCalendarUI();
-            renderDashboardCompleto();
-            document.getElementById("modal-datepicker-interface").style.display = "none";
+            document.getElementById("txt-faixa-ativa-label").innerText = DADOS.activePreset === "7d" ? "Últimos 7 dias" : `Período Ativo (${DADOS.activePreset})`;
+            refreshCalendarUI(); renderDashboardCompleto(); document.getElementById("modal-datepicker-interface").style.display = "none";
         }
-
         function selectSpecificDay(day, month, year, element) {
             const clickedDate = new Date(year, parseInt(month) - 1, day);
-            if (!DADOS.startDate || (DADOS.startDate && DADOS.endDate)) {
-                DADOS.startDate = clickedDate; DADOS.endDate = null; DADOS.activePreset = "custom";
-                document.getElementById("txt-faixa-ativa-label").innerText = formatDateString(clickedDate) + " - Selecionando...";
-            } else {
-                if (clickedDate < DADOS.startDate) {
-                    DADOS.startDate = clickedDate;
-                } else {
-                    DADOS.endDate = clickedDate; DADOS.activePreset = "custom";
-                    document.getElementById("txt-faixa-ativa-label").innerText = formatDateString(DADOS.startDate) + " até " + formatDateString(clickedDate);
-                    document.getElementById("modal-datepicker-interface").style.display = "none";
-                }
-            }
-            document.querySelectorAll(".preset-btn").forEach(btn => btn.classList.remove("active-preset"));
+            if (!DADOS.startDate || (DADOS.startDate && DADOS.endDate)) { DADOS.startDate = clickedDate; DADOS.endDate = null; DADOS.activePreset = "custom"; }
+            else { if (clickedDate >= DADOS.startDate) { DADOS.endDate = clickedDate; document.getElementById("modal-datepicker-interface").style.display = "none"; } else DADOS.startDate = clickedDate; }
             refreshCalendarUI(); renderDashboardCompleto();
         }
-
-        function formatDateString(date) {
-            return String(date.getDate()).padStart(2, '0') + '/' + String(date.getMonth() + 1).padStart(2, '0');
-        }
-
+        function formatDateString(date) { return String(date.getDate()).padStart(2, '0') + '/' + String(date.getMonth() + 1).padStart(2, '0'); }
         function refreshCalendarUI() {
             document.querySelectorAll(".day-cell:not(.adj-month)").forEach(cell => {
-                const day = parseInt(cell.getAttribute("data-day"));
-                const month = parseInt(cell.getAttribute("data-month"));
-                const year = parseInt(cell.getAttribute("data-year"));
-                const cellDate = new Date(year, month - 1, day);
+                const day = parseInt(cell.getAttribute("data-day")); const month = parseInt(cell.getAttribute("data-month")); const cellDate = new Date(2026, month - 1, day);
                 cell.classList.remove("selected-day");
-                if (DADOS.startDate && !DADOS.endDate) {
-                    if (cellDate.getTime() === DADOS.startDate.getTime()) cell.classList.add("selected-day");
-                } else if (DADOS.startDate && DADOS.endDate) {
-                    if (cellDate >= DADOS.startDate && cellDate <= DADOS.endDate) cell.classList.add("selected-day");
-                }
+                if (DADOS.startDate && !DADOS.endDate && cellDate.getTime() === DADOS.startDate.getTime()) cell.classList.add("selected-day");
+                else if (DADOS.startDate && DADOS.endDate && cellDate >= DADOS.startDate && cellDate <= DADOS.endDate) cell.classList.add("selected-day");
             });
         }
 
         function buildCalendarGrids() {
-            let dates = Object.keys(LOGS_PLANILHA);
-            let months = [];
-            if (dates.length === 0) {
-                months = [{ month: 4, year: 2026 }, { month: 5, year: 2026 }]; 
-            } else {
-                let uniqueMonths = {};
-                dates.forEach(dStr => {
-                    let parts = dStr.split("/");
-                    uniqueMonths[`${parseInt(parts[1]) - 1}-2026`] = { month: parseInt(parts[1]) - 1, year: 2026 };
-                });
+            let dates = Object.keys(LOGS_PLANILHA); let months = [];
+            if (dates.length === 0) months = [{ month: 4, year: 2026 }, { month: 5, year: 2026 }];
+            else {
+                let uniqueMonths = {}; dates.forEach(dStr => { let parts = dStr.split("/"); uniqueMonths[`${parseInt(parts[1]) - 1}-2026`] = { month: parseInt(parts[1]) - 1, year: 2026 }; });
                 months = Object.values(uniqueMonths).sort((a,b) => a.month - b.month);
-                if (months.length > 2) months = months.slice(-2);
             }
-            
-            const calendarArea = document.querySelector(".panel-calendar-area");
-            calendarArea.innerHTML = "";
+            const calendarArea = document.querySelector(".panel-calendar-area"); calendarArea.innerHTML = "";
             const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
             
             months.forEach(mObj => {
                 let monthDiv = document.createElement("div"); monthDiv.className = "month-view";
                 let titleDiv = document.createElement("div"); titleDiv.className = "month-title"; titleDiv.innerText = `${monthNames[mObj.month]} ${mObj.year}`; monthDiv.appendChild(titleDiv);
                 let weekGrid = document.createElement("div"); weekGrid.className = "week-grid";
-                ["dom", "seg", "ter", "qua", "qui", "sex", "sab"].forEach(wd => {
-                    let wdDiv = document.createElement("div"); wdDiv.className = "week-day"; wdDiv.innerText = wd; weekGrid.appendChild(wdDiv);
-                });
+                ["dom", "seg", "ter", "qua", "qui", "sex", "sab"].forEach(wd => { let wdDiv = document.createElement("div"); wdDiv.className = "week-day"; wdDiv.innerText = wd; weekGrid.appendChild(wdDiv); });
                 monthDiv.appendChild(weekGrid);
-                
                 let daysGrid = document.createElement("div"); daysGrid.className = "days-grid";
-                let firstDay = new Date(mObj.year, mObj.month, 1).getDay();
-                let daysInMonth = new Date(mObj.year, mObj.month + 1, 0).getDate();
-                let prevMonthDays = new Date(mObj.year, mObj.month, 0).getDate();
-                
-                for (let i = firstDay - 1; i >= 0; i--) {
-                    let dayCell = document.createElement("div"); dayCell.className = "day-cell adj-month"; dayCell.innerText = prevMonthDays - i; daysGrid.appendChild(dayCell);
-                }
+                let firstDay = new Date(mObj.year, mObj.month, 1).getDay(); let daysInMonth = new Date(mObj.year, mObj.month + 1, 0).getDate();
+                for (let i = 0; i < firstDay; i++) { let dayCell = document.createElement("div"); dayCell.className = "day-cell adj-month"; dayCell.innerText = ""; daysGrid.appendChild(dayCell); }
                 for (let d = 1; d <= daysInMonth; d++) {
-                    let dayCell = document.createElement("div"); dayCell.className = "day-cell";
-                    dayCell.setAttribute("data-day", d); dayCell.setAttribute("data-month", mObj.month + 1); dayCell.setAttribute("data-year", mObj.year); dayCell.innerText = d;
-                    let mStr = String(mObj.month + 1).padStart(2, '0');
-                    dayCell.onclick = function() { selectSpecificDay(d, mStr, mObj.year, dayCell); };
-                    daysGrid.appendChild(dayCell);
+                    let dayCell = document.createElement("div"); dayCell.className = "day-cell"; dayCell.setAttribute("data-day", d); dayCell.setAttribute("data-month", mObj.month + 1); dayCell.innerText = d;
+                    dayCell.onclick = function() { selectSpecificDay(d, String(mObj.month + 1).padStart(2,'0'), mObj.year, dayCell); }; daysGrid.appendChild(dayCell);
                 }
                 monthDiv.appendChild(daysGrid); calendarArea.appendChild(monthDiv);
             });
             refreshCalendarUI();
         }
 
-        function renderHubTopInitial() {
-            const container = document.getElementById("hub-projetos-container");
-            let html = "";
-            for (let id in DADOS.projetosConfig) {
-                const cfg = DADOS.projetosConfig[id];
-                let badgeClass = "badge-bom"; let statusText = "Saudável";
-                if (cfg.mediaSpam >= 0.30) { badgeClass = "badge-ruim"; statusText = "Crítico"; }
-                else if (cfg.mediaSpam >= 0.10) { badgeClass = "badge-medio"; statusText = "Atenção"; }
-                
-                html += `
-                    <div class="hub-card ${id === DADOS.activeProjectId ? 'active-main' : ''}" data-id="${id}" onclick="changeProject('${id}')">
-                        <div class="hub-indicator" style="background-color: ${cfg.mediaSpam >= 0.30 ? 'var(--alert-red)' : (cfg.mediaSpam >= 0.10 ? 'var(--alert-yellow)' : 'var(--mint)')};"></div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                            <strong style="color:var(--navy-dark); font-size:13px;">${cfg.nome}</strong>
-                            <span class="badge-status ${badgeClass}">${statusText} (${cfg.mediaSpam.toFixed(3)}%)</span>
-                        </div>
-                    </div>
-                `;
-            }
-            container.innerHTML = html;
-        }
-
-        function alterarFiltroCampanha(filtro) {
-            DADOS.activeFilter = filtro;
-            document.querySelectorAll(".btn-filter").forEach(btn => btn.classList.remove("active-filter"));
-            let targetId = filtro === "aprovado" ? "btn-filt-aprovado" : (filtro === "otimizar" ? "btn-filt-otimizar" : (filtro === "remover" ? "btn-filt-remover" : "btn-filt-todos"));
-            document.getElementById(targetId).classList.add("active-filter");
-            renderDashboardCompleto(false); 
-        }
+        function changeProject(id) { DADOS.activeProjectId = id; document.querySelectorAll(".hub-card").forEach(c => c.classList.remove("active-main")); const card = document.querySelector(`[data-id="${id}"]`); if (card) card.classList.add("active-main"); document.getElementById("txt-header-titulo").innerText = DADOS.projetosConfig[id]?.nome || `Projeto ${id}`; document.getElementById("painel-auditoria-avancada").style.display = "none"; DADOS.activeFilter = "todos"; renderDashboardCompleto(); }
+        function alterarFiltroCampanha(filtro) { DADOS.activeFilter = filtro; document.querySelectorAll(".btn-filter").forEach(btn => btn.classList.remove("active-filter")); let targetId = filtro === "aprovado" ? "btn-filt-aprovado" : (filtro === "otimizar" ? "btn-filt-otimizar" : (filtro === "remover" ? "btn-filt-remover" : "btn-filt-todos")); document.getElementById(targetId).classList.add("active-filter"); renderDashboardCompleto(false); }
 
         function renderDashboardCompleto(atualizarSpamDia = true) {
-            const tPreset = DADOS.activePreset;
-            const projId = DADOS.activeProjectId;
-            let rawList = [];
-
+            const tPreset = DADOS.activePreset; const projId = DADOS.activeProjectId; let rawList = [];
             if (tPreset === "custom" && DADOS.startDate) {
                 let start = new Date(DADOS.startDate.getFullYear(), DADOS.startDate.getMonth(), DADOS.startDate.getDate());
                 let end = DADOS.endDate ? new Date(DADOS.endDate.getFullYear(), DADOS.endDate.getMonth(), DADOS.endDate.getDate()) : start;
@@ -725,62 +522,54 @@
             else if (DADOS.activeFilter === "remover") campanhasExibidas = campanhasExibidas.filter(c => c.spam >= 0.30);
 
             const tbody = document.getElementById("tabela-broadcast-dados").querySelector("tbody");
-            if(campanhasExibidas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:24px;">Nenhuma campanha localizada para o filtro selecionado.</td></tr>`;
-            } else {
+            if(campanhasExibidas.length === 0) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:24px;">Nenhuma campanha localizada.</td></tr>`;
+            else {
                 tbody.innerHTML = campanhasExibidas.map(c => {
                     let statusLabel = c.spam <= 0.10 ? "Aprovado" : (c.spam < 0.30 ? "Otimizar" : "Remover");
-                    let statusIcon = c.spam <= 0.10 ? "🟢" : (c.spam < 0.30 ? "🟡" : "🔴");
                     return `<tr class="row-clicavel" onclick="inspecionarCampanhaRow(this, '${c.id}', '${c.data}', ${c.spam})">
-                        <td style="color: #64748B;">${c.data}</td>
-                        <td style="color: #028090; font-weight: 500;">${c.id}</td>
-                        <td style="color: #1E293B;">${c.spam.toFixed(2)}%</td>
-                        <td style="color: #1E293B; font-weight: 600;">${statusLabel} ${statusIcon}</td>
+                        <td style="color: #64748B;">${c.data}</td><td style="color: #028090; font-weight: 500;">${c.id}</td><td>${c.spam.toFixed(2)}%</td><td style="font-weight: 600;">${statusLabel}</td>
                     </tr>`;
                 }).join('');
             }
-
             if (DADOS.projetosConfig[projId] && document.getElementById("caixa-insights-postmaster").className === "analise-box") renderInsights();
             if (atualizarSpamDia) renderCharts();
         }
 
+        function renderInsights() {
+            const projId = DADOS.activeProjectId; const spamMedio = DADOS.projetosConfig[projId]?.mediaSpam || 0.0;
+            document.getElementById("caixa-insights-postmaster").innerHTML = `<div><strong>💡 AUDITORIA DE ENTREGABILIDADE: PROJETO ${projId}</strong><p style="font-size:12px;">Média sanitária atual do Postmaster em: ${spamMedio.toFixed(3)}%.</p></div>`;
+        }
+
+        function inspecionarCampanhaRow(element, idCampanha, dataCampanha, spamAtual) {
+            document.querySelectorAll(".row-clicavel").forEach(r => r.classList.remove("row-selected")); element.classList.add("row-selected");
+            document.getElementById("txt-titulo-inspecao").innerText = `🔍 Auditoria Avançada de Lote: ${idCampanha}`;
+            document.getElementById("tabela-inspecao-kpis").innerHTML = `<tr><td>Disparo Executado (${dataCampanha})</td><td>${spamAtual.toFixed(2)}%</td><td>Mapeado</td></tr>`;
+            document.getElementById("painel-auditoria-avancada").style.display = "block";
+        }
+
         function renderCharts() {
             const projId = DADOS.activeProjectId;
-            let timelineEixoSpam = Object.keys(LOGS_PLANILHA).sort((a,b) => {
-                let ptsA = a.split("/"); let ptsB = b.split("/");
-                return new Date(2026, parseInt(ptsA[1])-1, parseInt(ptsA[0])) - new Date(2026, parseInt(ptsB[1])-1, parseInt(ptsB[0]));
-            }).slice(-15);
-
+            let timelineEixoSpam = Object.keys(LOGS_PLANILHA).sort((a,b) => { let ptsA = a.split("/"); let ptsB = b.split("/"); return new Date(2026, parseInt(ptsA[1])-1, parseInt(ptsA[0])) - new Date(2026, parseInt(ptsB[1])-1, parseInt(ptsB[0])); }).slice(-15);
             if (timelineEixoSpam.length === 0) return;
+
             let valoresEixoSpam = [];
             timelineEixoSpam.forEach(k => {
-                let logs = LOGS_PLANILHA[k] || [];
-                let projectLogs = logs.filter(l => extractProjectId(l.id) === projId);
+                let logs = LOGS_PLANILHA[k] || []; let projectLogs = logs.filter(l => extractProjectId(l.id) === projId);
                 if(projectLogs.length === 0) { valoresEixoSpam.push(0); return; }
-                let sum = 0; projectLogs.forEach(l => sum += l.spam);
-                valoresEixoSpam.push(parseFloat((sum / projectLogs.length).toFixed(2)));
+                let sum = 0; projectLogs.forEach(l => sum += l.spam); valoresEixoSpam.push(parseFloat((sum / projectLogs.length).toFixed(2)));
             });
 
-            if (activeCharts.gSpamDia) { activeCharts.gSpamDia.destroy(); }
+            if (activeCharts.gSpamDia) activeCharts.gSpamDia.destroy();
             try {
                 activeCharts.gSpamDia = new Chart(document.getElementById('gSpamDia'), {
                     type: 'line',
-                    data: {
-                        labels: timelineEixoSpam,
-                        datasets: [
-                            { label: 'Spam % Médio Diário', data: valoresEixoSpam, borderColor: '#028090', pointBackgroundColor: valoresEixoSpam.map(v => v >= 0.30 ? '#E63946' : '#028090'), pointRadius: 4, tension: 0.1 },
-                            { label: 'Teto Crítico (0.3%)', data: Array(timelineEixoSpam.length).fill(0.30), borderColor: '#E63946', borderDash: [4, 4], pointRadius: 0 }
-                        ]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, ticks: { callback: v => v.toFixed(2) + '%' } } } }
+                    data: { labels: timelineEixoSpam, datasets: [{ label: 'Spam % Médio Diário', data: valoresEixoSpam, borderColor: '#028090', pointRadius: 4, tension: 0.1 }, { label: 'Teto Crítico (0.3%)', data: Array(timelineEixoSpam.length).fill(0.30), borderColor: '#E63946', borderDash: [4, 4], pointRadius: 0 }] },
+                    options: { responsive: true, maintainAspectRatio: false }
                 });
             } catch(e) {}
         }
 
-        document.addEventListener("DOMContentLoaded", function() {
-            reconstruirProjetosEAbas();
-            sincronizarGoogleSheets();
-        });
+        document.addEventListener("DOMContentLoaded", function() { reconstruirProjetosEAbas(); sincronizarGoogleSheets(); });
     </script>
 </body>
 </html>
