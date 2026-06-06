@@ -55,7 +55,7 @@
     <header>
         <div class="header-title">
             <h1 id="h-title">Geral / Projeto 404</h1>
-            <p style="font-size:12px; color:#94A3B8;">Dashboard de Performance Operacional</p>
+            <p style="font-size:12px; color:#94A3B8;">Executive War Room - Dashboard</p>
         </div>
         <div class="badge-selo">Selo: SEM Aquisição</div>
     </header>
@@ -63,12 +63,12 @@
     <div class="grid-units">
         <div class="unit-card c404 active" id="card-404" onclick="setProj('404')">
             <h2>Geral / Projeto 404</h2>
-            <p id="cnt-404">Auditando disparos...</p>
+            <p id="cnt-404">Analisando dados...</p>
             <div class="pill-status" id="pill-404">AGUARDANDO...</div>
         </div>
         <div class="unit-card c2513" id="card-2513" onclick="setProj('2513')">
             <h2>Projeto 2513 (MX02-Ep10)</h2>
-            <p id="cnt-2513">Auditando disparos...</p>
+            <p id="cnt-2513">Analisando dados...</p>
             <div class="pill-status" id="pill-2513">AGUARDANDO...</div>
         </div>
     </div>
@@ -93,7 +93,7 @@
 </div>
 
 <script>
-    // URL DA NOVA PLANILHA
+    // URL DA SUA PLANILHA
     const ssId = '1Qad4P2nADyNtaYC1gegxFrHjzgUwanGisQ3Sv7AYbOE';
     const gid = '372389848';
     
@@ -111,24 +111,32 @@
 
     function handleResponse(response) {
         if (response.isError()) {
-            document.getElementById('load-text').innerHTML = 
-                `<span style="color:red">ERRO DE PERMISSÃO:</span><br>Vá na planilha em Arquivo > Publicar na Web > Publicar.`;
-            document.querySelector('.spinner').style.display = 'none';
+            document.getElementById('load-text').innerHTML = `<span style="color:red">ERRO:</span> Verifique se a planilha está em Arquivo > Publicar na Web.`;
             return;
         }
 
         const dt = response.getDataTable();
         const rows = dt.getNumberOfRows();
-        masterData = [];
+        const cols = dt.getNumberOfColumns();
         
+        // Mapeia colunas dinamicamente para evitar erro se você mudar a ordem
+        let colData = 0, colCamp = 1, colSpam = 2;
+        for(let j=0; j<cols; j++){
+            let label = dt.getColumnLabel(j).toLowerCase();
+            if(label.includes('data')) colData = j;
+            if(label.includes('campanha') || label.includes('identificador')) colCamp = j;
+            if(label.includes('spam')) colSpam = j;
+        }
+
+        masterData = [];
         for (let i = 0; i < rows; i++) {
-            let spamVal = dt.getValue(i, 2);
-            if (spamVal > 0 && spamVal < 0.05) spamVal *= 100;
+            let sVal = dt.getValue(i, colSpam);
+            if (sVal > 0 && sVal < 0.05) sVal *= 100;
 
             masterData.push({
-                data: dt.getFormattedValue(i, 0),
-                camp: dt.getValue(i, 1),
-                spam: parseFloat(spamVal) || 0
+                data: dt.getFormattedValue(i, colData),
+                camp: dt.getValue(i, colCamp),
+                spam: parseFloat(sVal) || 0
             });
         }
 
@@ -158,7 +166,7 @@
 
         const active = masterData.filter(d => String(d.camp).includes(currentProj));
         const tbody = document.querySelector('#mainTable tbody');
-        tbody.innerHTML = active.slice().reverse().slice(0, 50).map(d => {
+        tbody.innerHTML = active.slice().reverse().slice(0, 40).map(d => {
             let st = "Aprovado", bg = "#DCFCE7", cl = "#166534";
             if(d.spam >= 0.1) { st = "Otimizar"; bg = "#FEF9C3"; cl = "#854D0E"; }
             if(d.spam >= 0.3) { st = "Remover"; bg = "#FEE2E2"; cl = "#991B1B"; }
@@ -166,4 +174,16 @@
         }).join('');
 
         const chartD = active.slice(-12);
-        if(chartInstanc
+        if(chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(document.getElementById('mainChart'), {
+            type: 'line',
+            data: {
+                labels: chartD.map(d => d.data),
+                datasets: [{ label: 'Taxa Spam (%)', data: chartD.map(d => d.spam), borderColor: '#028090', backgroundColor: 'rgba(2, 128, 144, 0.05)', fill: true, tension: 0.4, pointRadius: 5, pointBackgroundColor: '#028090' }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: v => v+'%' } } } }
+        });
+    }
+</script>
+</body>
+</html>
