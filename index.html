@@ -348,13 +348,28 @@
         }
 
         // Função de normalização para ler floats de spam (ex: "0,51%" -> 0.51)
+        // BLINDAGEM ADICIONAL: Defende o sistema contra 'Infinity' e valores nulos
         function cleanSpamValue(val) {
             if (val === undefined || val === null || val === '—' || val === '-' || String(val).trim() === '') {
                 return null;
             }
             const clean = String(val).replace(',', '.').replace('%', '').trim();
             const parsed = parseFloat(clean);
-            return isNaN(parsed) ? null : parsed;
+            if (isNaN(parsed) || !isFinite(parsed)) {
+                return null;
+            }
+            return parsed;
+        }
+
+        // Extrai dinamicamente os blocos de horário dos nomes de campanhas da planilha
+        function extractCampaignSlot(campanhaStr) {
+            if (!campanhaStr) return 'Geral';
+            // Padrão que captura horários como "21h", "17h45", "11h", "03h"
+            const match = campanhaStr.match(/(\d{1,2})h(\d{2})?/i);
+            if (match) {
+                return 'H' + parseInt(match[1], 10);
+            }
+            return 'Geral';
         }
 
         // Função auxiliar para analisar datas no formato DD-MM, DD/MM, YYYY-MM-DD de forma flexível e robusta
@@ -730,7 +745,7 @@
             });
         }
 
-        // Classificação de cor para percentuais de spam baseados nas novas categorias (compatível com decimal de vírgula)
+        // Classificação de colas de spam na tabela diária
         function getSpamColorClass(val) {
             if (!val || val === "—") return "text-slate-400 font-normal";
             const num = cleanSpamValue(val);
@@ -754,63 +769,94 @@
             return `<span class="text-slate-400">0</span>`;
         }
 
-        // Constrói Gráfico Multilinhas de histórico totalmente dinâmico
+        // Constrói Gráfico de Histórico de Linhas Consolidado
+        // AGRUPAMENTO: Agrupa múltiplas campanhas diárias por horário/slot de forma limpa e limita a 30 dias para evitar sobreposições
         function buildHistoricalChart(proj) {
             const ctx = document.getElementById('historicalChart').getContext('2d');
             if (activeChart) { activeChart.destroy(); }
 
-            // Ordena de forma cronológica (mais antigo na esquerda -> mais recente na direita)
-            const sortedHistory = [...proj.detalhesTabela].sort((a, b) => parseDateDM(a.data) - parseDateDM(b.data));
-            const labels = sortedHistory.map(h => h.data);
-
-            // Mapeia de forma autônoma todas as chaves adicionais da planilha (ignorando colunas de controle)
-            const keysToRender = Object.keys(proj.detalhesTabela[0]).filter(k => k !== 'data' && k !== 'envios' && k !== 'ge03');
-            
-            const colors = {
-                'ctr u.': '#8b5cf6', 'geral': '#f59e0b', 'h1': '#06b6d4', 'h9': '#a78bfa',
-                'h12': '#eab308', 'h14': '#ec4899', 'h15': '#10b981', 'h16': '#3b82f6',
-                'h18': '#f97316', 'h19': '#14b8a6', 'h21': '#f43f5e'
-            };
-            const defaultColors = ['#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f43f5e', '#a78bfa', '#14b8a6'];
-            
-            let colorIndex = 0;
-            const datasets = [];
-
-            keysToRender.forEach(key => {
-                const hasData = sortedHistory.some(h => h[key] && h[key] !== '—');
-                if (hasData) {
-                    const dataPoints = sortedHistory.map(h => {
-                        return cleanSpamValue(h[key]);
-                    });
-                    
-                    datasets.push({
-                        label: key.toUpperCase(),
-                        data: dataPoints,
-                        borderColor: colors[key] || defaultColors[colorIndex++ % defaultColors.length],
-                        backgroundColor: 'transparent',
-                        borderWidth: 2,
-                        pointRadius: 3,
-                        pointHoverRadius: 6,
-                        tension: 0.4,
-                        spanGaps: true // Conecta pontos mesmo havendo lacunas '—' no período
-                    });
+            // 1. Agrupar as taxas de spam de campanhas individuais por Dia e por Horário (Slot H1, H9, etc.)
+            const dailySlotsMap = {};
+            proj.detalhesTabela.forEach(row => {
+                const dateStr = row.data;
+                if (!dailySlotsMap[dateStr]) {
+                    dailySlotsMap[dateStr] = {};
+                }
+                
+                // Encontrar o nome da campanha e extrair o slot correspondente (ex: H21)
+                const campaignCol = Object.keys(row).find(k => k.toLowerCase().includes('campanha'));
+                const slot = campaignCol ? extractCampaignSlot(row[campaignCol]) : 'Geral';
+                
+                // Encontrar a taxa de spam
+                const spamCol = Object.keys(row).find(k => (k.toLowerCase().includes('taxa') || k.toLowerCase().includes('spam')) && !k.toLowerCase().includes('campanha'));
+                const spamVal = cleanSpamValue(row[spamCol]);
+                
+                if (spamVal !== null) {
+                    if (!dailySlotsMap[dateStr][slot]) {
+                        dailySlotsMap[dateStr][slot] = [];
+                    }
+                    dailySlotsMap[dateStr][slot].push(spamVal);
                 }
             });
 
+            // Ordena as datas cronologicamente (da mais antiga para a mais recente)
+            const sortedDates = Object.keys(dailySlotsMap).sort((a, b) => parseDateDM(a) - parseDateDM(b));
+            
+            // Limitamos a exibição às últimas 30 datas para manter o gráfico legível e visualmente estético
+            const datesToShow = sortedDates.slice(-30);
+
+            // Mapeia todas as chaves de slot encontradas (H1, H9, H12...)
+            const allSlots = new Set();
+            datesToShow.forEach(d => {
+                Object.keys(dailySlotsMap[d]).forEach(s => allSlots.add(s));
+            });
+
+            const colors = {
+                'h1': '#06b6d4', 'h9': '#a78bfa', 'h12': '#eab308', 'h14': '#ec4899',
+                'h15': '#10b981', 'h16': '#3b82f6', 'h17': '#f59e0b', 'h18': '#f97316',
+                'h19': '#14b8a6', 'h21': '#f43f5e', 'geral': '#8b5cf6'
+            };
+            const defaultColors = ['#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f43f5e', '#a78bfa', '#14b8a6'];
+            let colorIndex = 0;
+            const datasets = [];
+
+            // Adiciona um dataset por horário
+            allSlots.forEach(slot => {
+                const dataPoints = datesToShow.map(d => {
+                    const list = dailySlotsMap[d][slot];
+                    if (list && list.length > 0) {
+                        return parseFloat((list.reduce((a, b) => a + b, 0) / list.length).toFixed(3));
+                    }
+                    return null;
+                });
+
+                datasets.push({
+                    label: slot.toUpperCase(),
+                    data: dataPoints,
+                    borderColor: colors[slot.toLowerCase()] || defaultColors[colorIndex++ % defaultColors.length],
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    tension: 0.4,
+                    spanGaps: true
+                });
+            });
+
+            // Linha limite de exclusão (Remover)
             datasets.push({
                 label: "Teto 0.3% (Remover)",
-                data: Array(labels.length).fill(0.30),
+                data: Array(datesToShow.length).fill(0.30),
                 borderColor: '#f43f5e',
                 borderDash: [5, 5],
                 borderWidth: 1.5,
                 pointRadius: 0,
-                fill: false,
-                labelColor: '#f43f5e'
+                fill: false
             });
 
             activeChart = new Chart(ctx, {
                 type: 'line',
-                data: { labels: labels, datasets: datasets },
+                data: { labels: datesToShow, datasets: datasets },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -841,19 +887,36 @@
             });
         }
 
-        // Constrói os gráficos adicionais totalmente sincronizados
+        // Constrói os gráficos diários agregados e o gráfico horizontal de canais
         function buildComplementaryCharts(proj) {
-            // Ordena de forma cronológica (mais antigo para mais recente)
-            const sortedHistory = [...proj.detalhesTabela].sort((a, b) => parseDateDM(a.data) - parseDateDM(b.data));
-            const dailyLabels = sortedHistory.map(h => h.data);
+            // Agrupador diário consolidado para volumes e taxas médias diárias
+            const dailyAgg = {};
+            proj.detalhesTabela.forEach(row => {
+                const dateStr = row.data;
+                if (!dailyAgg[dateStr]) {
+                    dailyAgg[dateStr] = { envios: 0, spamSum: 0, spamCount: 0 };
+                }
+                dailyAgg[dateStr].envios += cleanInt(row.envios);
+                
+                const spamCol = Object.keys(row).find(k => (k.toLowerCase().includes('taxa') || k.toLowerCase().includes('spam')) && !k.toLowerCase().includes('campanha'));
+                const spamVal = cleanSpamValue(row[spamCol]);
+                if (spamVal !== null) {
+                    dailyAgg[dateStr].spamSum += spamVal;
+                    dailyAgg[dateStr].spamCount++;
+                }
+            });
+
+            const sortedDates = Object.keys(dailyAgg).sort((a, b) => parseDateDM(a) - parseDateDM(b));
+            // Limitamos a exibição das datas mostradas a 30 dias para evitar amontoamento gráfico
+            const datesToShow = sortedDates.slice(-30);
+
+            const dailyLabels = datesToShow;
+            const dailyVolumeData = datesToShow.map(d => dailyAgg[d].envios);
+            const dailySpamData = datesToShow.map(d => dailyAgg[d].spamCount > 0 ? parseFloat((dailyAgg[d].spamSum / dailyAgg[d].spamCount).toFixed(3)) : 0);
 
             // 1. GRÁFICO DE BARRAS POR DIA (Volume de Envios)
             const ctxDaily = document.getElementById('dailyVolumeChart').getContext('2d');
             if (dailyVolumeChartInstance) { dailyVolumeChartInstance.destroy(); }
-
-            const dailyData = sortedHistory.map(h => {
-                return cleanInt(h.envios);
-            });
 
             dailyVolumeChartInstance = new Chart(ctxDaily, {
                 type: 'bar',
@@ -861,7 +924,7 @@
                     labels: dailyLabels,
                     datasets: [{
                         label: 'Total de Envios',
-                        data: dailyData,
+                        data: dailyVolumeData,
                         backgroundColor: '#3b82f6',
                         borderRadius: 8,
                         maxBarThickness: 45
@@ -884,25 +947,9 @@
                 }
             });
 
-            // 2. GRÁFICO DE LINHA - TAXA DE SPAM POR DIA (Média real compatível com vírgulas)
+            // 2. GRÁFICO DE LINHA - TAXA DE SPAM MÉDIA DIÁRIA
             const ctxDailySpam = document.getElementById('dailySpamLineChart').getContext('2d');
             if (dailySpamLineChartInstance) { dailySpamLineChartInstance.destroy(); }
-
-            const campaignKeys = Object.keys(proj.detalhesTabela[0]).filter(k => k !== 'data' && k !== 'envios' && k !== 'ge03');
-
-            const dailySpamData = sortedHistory.map(h => {
-                let sum = 0;
-                let count = 0;
-                campaignKeys.forEach(k => {
-                    const val = h[k];
-                    const numericVal = cleanSpamValue(val);
-                    if (numericVal !== null) {
-                        sum += numericVal;
-                        count++;
-                    }
-                });
-                return count > 0 ? parseFloat((sum / count).toFixed(3)) : 0;
-            });
 
             dailySpamLineChartInstance = new Chart(ctxDailySpam, {
                 type: 'line',
@@ -949,30 +996,42 @@
                 }
             });
 
-            // 3. GRÁFICO POR CAMPANHA / HORÁRIO (Taxa média de Spam compatível com vírgulas)
+            // 3. GRÁFICO POR HORÁRIO (Canais de Horário agrupados do log)
             const ctxCampaign = document.getElementById('campaignSpamChart').getContext('2d');
             if (campaignSpamChartInstance) { campaignSpamChartInstance.destroy(); }
 
-            const campaignLabels = campaignKeys.map(k => k.toUpperCase().startsWith('H') ? 'Campanha ' + k.toUpperCase() : k.toUpperCase());
+            const slotSpamSum = {};
+            const slotSpamCount = {};
 
-            const campaignData = campaignKeys.map(key => {
-                let sum = 0;
-                let count = 0;
-                proj.detalhesTabela.forEach(row => {
-                    const cellVal = row[key];
-                    const numericVal = cleanSpamValue(cellVal);
-                    if (numericVal !== null) {
-                        sum += numericVal;
-                        count++;
+            proj.detalhesTabela.forEach(row => {
+                const campaignCol = Object.keys(row).find(k => k.toLowerCase().includes('campanha'));
+                const slot = campaignCol ? extractCampaignSlot(row[campaignCol]) : 'Geral';
+                
+                const spamCol = Object.keys(row).find(k => (k.toLowerCase().includes('taxa') || k.toLowerCase().includes('spam')) && !k.toLowerCase().includes('campanha'));
+                const spamVal = cleanSpamValue(row[spamCol]);
+                
+                if (spamVal !== null) {
+                    if (!slotSpamSum[slot]) {
+                        slotSpamSum[slot] = 0;
+                        slotSpamCount[slot] = 0;
                     }
-                });
-                return count > 0 ? parseFloat((sum / count).toFixed(3)) : 0;
+                    slotSpamSum[slot] += spamVal;
+                    slotSpamCount[slot]++;
+                }
             });
+
+            // Ordena os canais de horário encontrados de forma sequencial
+            const campaignLabels = Object.keys(slotSpamSum).sort((a, b) => {
+                const numA = parseInt(a.replace(/\D/g, '')) || 0;
+                const numB = parseInt(b.replace(/\D/g, '')) || 0;
+                return numA - numB;
+            });
+            const campaignData = campaignLabels.map(s => parseFloat((slotSpamSum[s] / slotSpamCount[s]).toFixed(3)));
 
             campaignSpamChartInstance = new Chart(ctxCampaign, {
                 type: 'bar',
                 data: {
-                    labels: campaignLabels,
+                    labels: campaignLabels.map(s => s === 'Geral' ? s : 'Horário ' + s),
                     datasets: [{
                         label: 'Taxa Média',
                         data: campaignData,
@@ -1088,7 +1147,10 @@
         // Recalcula métricas, cores e status em tempo real a partir da planilha carregada
         function recalculateMetricsFromTable(proj) {
             const table = proj.detalhesTabela;
-            proj.mDias = table.length.toString();
+            
+            // DIAS AUDITADOS: Passa a contar apenas datas ÚNICAS da planilha em vez da quantidade total de linhas
+            const uniqueDates = [...new Set(table.map(r => r.data))];
+            proj.mDias = uniqueDates.length.toString();
             
             let totalEnvios = 0;
             let campaignsGe03 = 0;
@@ -1099,16 +1161,23 @@
                 const env = cleanInt(row.envios);
                 totalEnvios += env;
 
+                // Encontra colunas que expressam taxas de spam ou spam e que não sejam o nome literal da campanha
                 const campaignKeys = Object.keys(row).filter(k => k !== 'data' && k !== 'envios' && k !== 'ge03');
                 campaignKeys.forEach(k => {
-                    const val = row[k];
-                    const numericVal = cleanSpamValue(val);
-                    if (numericVal !== null) {
-                        totalSpamSum += numericVal;
-                        spamCount++;
-                        if (numericVal >= 0.30) { campaignsGe03++; }
+                    if ((k.includes('taxa') || k.includes('spam')) && !k.includes('campanha')) {
+                        const val = row[k];
+                        const numericVal = cleanSpamValue(val);
+                        if (numericVal !== null) {
+                            totalSpamSum += numericVal;
+                            spamCount++;
+                        }
                     }
                 });
+            });
+
+            // Calcula quantidade de campanhas que ultrapassaram o limite de tolerância (ge03)
+            table.forEach(row => {
+                campaignsGe03 += parseInt(row.ge03, 10) || 0;
             });
 
             proj.mEnvios = totalEnvios.toLocaleString('pt-BR');
