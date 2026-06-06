@@ -162,7 +162,7 @@
         <div id="banner-alerta-local" style="display:none;" class="analise-box erro-conexao">
             <strong>⚠️ RESTRIÇÃO DE REQUISIÇÃO LOCAL DETECTADA (CORS DE NAVEGADOR)</strong><br>
             O navegador bloqueou a busca automática online porque o HTML está rodando direto do seu computador.<br>
-            <em>Não se preocupe: Esse aviso sumirá e funcionará sozinho assim que colocar no GitHub Pages.</em><br>
+            <em>Não se preocupe: Esse aviso sumirá e funcionará sozinho assim que colocar no GitHub Pages ou usar o botão abaixo.</em><br>
             <button class="btn-bypass" onclick="document.getElementById('bypass-file-input').click()">📂 Carregar arquivo CSV Manualmente (Para testar local)</button>
         </div>
 
@@ -202,7 +202,8 @@
                 <div class="table-container">
                     <div class="table-toolbar">
                         <div class="table-title">📋 Campanhas de Broadcast Auditadas</div>
-                        <div id="wrapper-status-msg"></div> <div class="filter-buttons">
+                        <div id="wrapper-status-msg"></div> 
+                        <div class="filter-buttons">
                             <button class="btn-filter active-filter" id="btn-filt-todos" onclick="alterarFiltroCampanha('todos')">Todos (<span id="cnt-todos">0</span>)</button>
                             <button class="btn-filter" id="btn-filt-aprovado" onclick="alterarFiltroCampanha('aprovado')">Aprovados 🟢 (<span id="cnt-aprovado">0</span>)</button>
                             <button class="btn-filter" id="btn-filt-otimizar" onclick="alterarFiltroCampanha('otimizar')">Otimizar 🟡 (<span id="cnt-otimizar">0</span>)</button>
@@ -248,9 +249,12 @@
     <div id="custom-toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 8px;"></div>
 
     <script>
-        // CADASTRO DE GIDs OPERACIONAIS (Cada número representa sua respectiva aba)
+        // ID DINÂMICO EXTRAÍDO DA SUA NOVA PLANILHA
+        const SPREADSHEET_ID = "1_zrTPZ9tehp5YmSrBXAehqwhsc5i9JOQnP3tNUdsS2o";
+
+        // CADASTRO DE GIDs (Mapeamento das abas)
         const PROJETOS_GIDS = {
-            "2513": "599913369", // Já travado no GID que você enviou!
+            "2513": "599913369", // Sua aba ativa carregando perfeitamente
             "404": "COLOQUE_O_GID_DA_ABA_404", 
             "2470": "COLOQUE_O_GID_DA_ABA_2470", 
             "2547": "COLOQUE_O_GID_DA_ABA_2547"
@@ -323,7 +327,6 @@
             return cols;
         }
 
-        // NOVO MOTOR AUTO-ADAPTÁVEL: Lê planilhas de 2 ou 3 colunas sem quebrar
         function processarTextoCSV(csvText) {
             const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== "");
             if (lines.length === 0) return false;
@@ -370,7 +373,6 @@
                 if (campanhaColIdx !== -1 && cols[campanhaColIdx]) {
                     rawCampaign = cols[campanhaColIdx];
                 } else {
-                    // Placeholder inteligente caso a aba só tenha Data e Spam
                     rawCampaign = `Broadcast Lote - Mapeado (${rawDate.trim()})`;
                 }
                 
@@ -467,29 +469,29 @@
             const btn = document.getElementById("btn-sync-sheets");
             const msgWrapper = document.getElementById("wrapper-status-msg");
             btn.disabled = true; btn.innerText = "⏳ Sincronizando...";
-            msgWrapper.innerHTML = ""; // Limpa avisos
+            if (msgWrapper) msgWrapper.innerHTML = ""; 
 
             const currentProjId = DADOS.activeProjectId;
             const targetGid = PROJETOS_GIDS[currentProjId];
 
             if (!targetGid || targetGid.includes("COLOQUE")) {
-                msgWrapper.innerHTML = `<span class="erro-inline-msg">⚠️ GID do Projeto ${currentProjId} não configurado no código JS.</span>`;
+                showToast(`Insira o número de GID do Projeto ${currentProjId} no código JavaScript.`, "error");
                 btn.disabled = false; btn.innerText = "🔄 Sincronizar Sheets";
                 reconstruirProjetosEAbas();
                 return;
             }
             
             try {
-                // Força a URL a requisitar a tabela bruta em formato CSV puro para o motor ler as linhas
-                const targetUrl = `https://docs.google.com/spreadsheets/d/e/2PACX-1vSePugXgmjZTIO3_a46XJCGpjDHSSSCzUDR-Jk9OkPMafPffOIVr-M23se--EiwGrr6XE08nWMnIUwf/pub?gid=${targetGid}&output=csv&_nocache=${Date.now()}`;
+                // ENDPOINT DE EXPORTAÇÃO CORRIGIDO: Vincula de forma inteligente o ID e o GID da aba ativa
+                const targetUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${targetGid}&_nocache=${Date.now()}`;
                 
                 const response = await fetch(targetUrl);
                 if (!response.ok) throw new Error();
                 const csvText = await response.text();
                 
-                // BLOQUEIO INTELIGENTE DE CRAWLER: Detecta se o link gerou uma página Web em vez do arquivo CSV
+                // BARREIRA DE SEGURANÇA: Avisa se o Sheets não foi compartilhado de forma correta
                 if (csvText.includes("<html") || csvText.includes("<!DOCTYPE")) {
-                    msgWrapper.innerHTML = `<span class="erro-inline-msg">❌ FORMATO INVÁLIDO: Mude a publicação de 'Página da Web' para 'Valores separados por vírgula (.csv)' no menu Link do Sheets.</span>`;
+                    showToast("Planilha com acesso restrito. Altere a configuração de Compartilhar para 'Qualquer pessoa com o link pode ler'.", "error");
                     btn.disabled = false; btn.innerText = "🔄 Sincronizar Sheets";
                     reconstruirProjetosEAbas();
                     return;
@@ -499,11 +501,11 @@
                     showToast(`Aba do Projeto ${currentProjId} sincronizada com sucesso!`, "success");
                     document.getElementById("banner-alerta-local").style.display = "none";
                 } else {
-                    msgWrapper.innerHTML = `<span class="erro-inline-msg">⚠️ Estrutura vazia ou sem linhas válidas detectada na aba.</span>`;
+                    showToast("Formato inválido ou aba sem dados.", "error");
                 }
             } catch (error) {
                 document.getElementById("banner-alerta-local").style.display = "block";
-                showToast("Bloqueio de CORS detectado localmente.", "error");
+                showToast("Bloqueio de conexão local (CORS). Use o carregamento manual abaixo para testar local.", "error");
                 reconstruirProjetosEAbas();
             } finally {
                 btn.disabled = false; btn.innerText = "🔄 Sincronizar Sheets";
@@ -656,7 +658,7 @@
 
             const tbody = document.getElementById("tabela-broadcast-dados").querySelector("tbody");
             if(campanhasExibidas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:24px;">Nenhuma campanha ativa para o Projeto ${projId} neste período.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:24px;">Nenhuma campanha ativa para o Projeto ${projId} neste período (Aba vazia).</td></tr>`;
             } else {
                 tbody.innerHTML = campanhasExibidas.map(c => {
                     let statusLabel = c.spam <= 0.10 ? "Aprovado" : (c.spam < 0.30 ? "Otimizar" : "Remover");
@@ -698,7 +700,7 @@
                 <tr>
                     <td><strong>ID Identificador Corporativo</strong></td>
                     <td><code style="color:var(--teal); font-weight:700;">${idCampanha}</code></td>
-                    <td>Lote disparado e catalogado oficialmente no sistema na data de <strong>${dataCampanha}</strong>.</td>
+                    <td>Lote disparado e catalogado officially no sistema na data de <strong>${dataCampanha}</strong>.</td>
                 </tr>
                 <tr>
                     <td><strong>Taxa de Reclamação (Spam)</strong></td>
@@ -790,6 +792,7 @@
         }
 
         document.addEventListener("DOMContentLoaded", function() { 
+            // Recupera a memória de navegação ou inicia direto na sua aba ativa (2513)
             DADOS.activeProjectId = localStorage.getItem("lastProjectViewed") || "2513";
             sincronizarGoogleSheets(); 
         });
