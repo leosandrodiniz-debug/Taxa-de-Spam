@@ -3,189 +3,753 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Projeto 404 — Solinero MX | Executive War Room</title>
+    <title>Hub de Projetos - Auditoria de Reputação</title>
+    <!-- Tailwind CSS para Estilização Rápida e Responsiva -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome para Ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js para Renderização de Gráficos Idênticos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root {
-            --navy-dark: #0A2540; --teal: #028090; --mint: #02C39A;
-            --alert-red: #E63946; --alert-yellow: #F4A261; --bg-light: #F4F6F9;
-            --card-bg: #FFFFFF; --text-dark: #1E293B; --text-muted: #64748B;
-            --border-color: #E2E8F0;
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
-        body { background-color: var(--bg-light); color: var(--text-dark); padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        
-        header {
-            background-color: var(--navy-dark); color: white; padding: 24px; border-radius: 12px;
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        /* Personalização fina para a barra de rolagem da tabela */
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
         }
-        .btn-sync {
-            background-color: var(--mint); color: var(--navy-dark); border: none;
-            padding: 12px 24px; border-radius: 30px; font-weight: 700; cursor: pointer;
-            transition: 0.2s; font-size: 13px;
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
         }
-        .btn-sync:hover { transform: scale(1.05); background-color: #02b08b; }
-
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
-
-        .card { background: white; border-radius: 12px; padding: 24px; border: 1px solid var(--border-color); box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-        h3 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 20px; color: var(--navy-dark); }
-
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th { text-align: left; background: #F8FAFC; padding: 12px; color: var(--text-muted); border-bottom: 2px solid var(--border-color); }
-        td { padding: 12px; border-bottom: 1px solid var(--border-color); }
-
-        .badge { padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; }
-        .badge-bom { background: #DCFCE7; color: #166534; }
-        .badge-ruim { background: #FEE2E2; color: #991B1B; }
-
-        #loading-overlay { position: fixed; top: 20px; right: 20px; background: var(--navy-dark); color: white; padding: 10px 20px; border-radius: 8px; font-size: 12px; display: none; }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
     </style>
 </head>
-<body>
+<body class="bg-[#f3f6f9] min-h-screen text-[#0b2240] flex flex-col justify-between p-4 md:p-6 transition-all duration-300">
 
-<div id="loading-overlay">Sincronizando dados...</div>
+    <!-- CONTAINER PRINCIPAL -->
+    <div class="max-w-[1600px] w-full mx-auto flex-grow flex flex-col gap-6">
+        
+        <!-- ================= TELA 1: HUB DE PROJETOS ================= -->
+        <div id="hubView" class="flex flex-col gap-6">
+            
+            <!-- HEADER DO HUB -->
+            <header class="bg-[#0b2240] text-white rounded-2xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative shadow-md">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight flex items-center gap-3">
+                        <span class="w-1 h-8 bg-blue-500 rounded-full inline-block"></span>
+                        Hub de Projetos
+                    </h1>
+                    <p class="text-slate-400 text-sm md:text-base mt-1">
+                        Selecione uma unidade operacional para auditar reputação e entregabilidade
+                    </p>
+                </div>
+                
+                <!-- Botão Central X (fechar/resetar) -->
+                <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden lg:block">
+                    <button class="bg-[#173052] hover:bg-[#1e3d68] text-white w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200" onclick="showToast('Home reiniciada')">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
 
-<div class="container">
-    <header>
-        <div>
-            <h1 style="font-size: 22px;">Projeto 404 — Executive War Room</h1>
-            <p style="font-size: 13px; opacity: 0.7; margin-top: 4px;">Monitoramento de Entregabilidade e Spam Diário</p>
+                <!-- Botão Sair -->
+                <button class="flex items-center gap-2 border border-slate-700 hover:bg-[#173052] px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 text-slate-300 hover:text-white" onclick="showToast('Sessão encerrada')">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>SAIR</span>
+                </button>
+            </header>
+
+            <!-- GRID DOS PROJETOS -->
+            <main class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="projectsGrid">
+                <!-- Cards serão renderizados via JS para facilitar gerenciamento de dados -->
+            </main>
         </div>
-        <button class="btn-sync" onclick="sincronizar()">🔄 Sincronizar Agora</button>
-    </header>
 
-    <div class="grid">
-        <div class="card">
-            <h3>📈 Histórico de Spam Diário (%)</h3>
-            <div style="height: 300px;"><canvas id="graficoSpam"></canvas></div>
-        </div>
+        <!-- ================= TELA 2: DASHBOARD DETALHADO ================= -->
+        <div id="dashboardView" class="hidden flex flex-col gap-6">
+            
+            <!-- HEADER DO DASHBOARD -->
+            <header class="bg-[#0b2240] text-white rounded-2xl p-5 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-md relative">
+                <div class="flex items-center gap-4">
+                    <!-- Botão Voltar -->
+                    <button onclick="backToHub()" class="bg-[#173052] hover:bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 shadow">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs uppercase tracking-wider text-slate-400 font-bold" id="dashProjectSubtitle">SOLINERO MX — NÚCLEO PRINCIPAL</span>
+                        </div>
+                        <h1 class="text-2xl font-black text-white mt-0.5" id="dashProjectTitle">Projeto 404</h1>
+                        <p class="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                            <i class="fa-regular fa-clock"></i> Atualizado em <span id="dashUpdateTime">06/06/2026, 12:12:50</span>
+                        </p>
+                    </div>
+                </div>
 
-        <div class="card">
-            <h3>📋 Log de Auditoria de Campanhas</h3>
-            <div style="max-height: 350px; overflow-y: auto;">
-                <table id="tabelaDados">
-                    <thead>
-                        <tr>
-                            <th>DATA</th>
-                            <th>CAMPANHA</th>
-                            <th>TAXA SPAM</th>
-                            <th>STATUS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Dados via JS -->
-                    </tbody>
-                </table>
+                <!-- Controles do Header -->
+                <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+                    <!-- Status Badge -->
+                    <span id="dashStatusBadge" class="bg-[#00b489]/20 text-[#00b489] text-xs font-black px-4 py-2 rounded-full border border-[#00b489]/30 tracking-wider">
+                        SAUDÁVEL - 0.18%
+                    </span>
+                    <!-- Atualizar -->
+                    <button class="flex items-center gap-2 border border-slate-700 hover:bg-[#173052] px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 text-slate-300 hover:text-white" onclick="triggerRefresh()">
+                        <i class="fa-solid fa-arrows-rotate" id="refreshIconDash"></i>
+                        <span>ATUALIZAR</span>
+                    </button>
+                    <!-- Sair -->
+                    <button class="flex items-center gap-2 border border-slate-700 hover:bg-[#173052] px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 text-slate-300 hover:text-white" onclick="backToHub()">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span>SAIR</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- FILTRO DE PERÍODOS -->
+            <div class="flex justify-end">
+                <div class="bg-white border border-slate-200 p-1.5 rounded-2xl flex items-center shadow-sm">
+                    <button onclick="setPeriod('7d')" id="btn-7d" class="px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 text-slate-500 hover:text-[#0b2240]">7 dias</button>
+                    <button onclick="setPeriod('30d')" id="btn-30d" class="px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 bg-indigo-50 text-indigo-600 shadow-sm">30 dias</button>
+                    <button onclick="setPeriod('90d')" id="btn-90d" class="px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 text-slate-500 hover:text-[#0b2240]">90 dias</button>
+                    <button onclick="setPeriod('all')" id="btn-all" class="px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 text-slate-500 hover:text-[#0b2240]">Tudo</button>
+                </div>
+            </div>
+
+            <!-- CARDS DE MÉTRICAS -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Card 1 -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                    <p class="text-slate-400 text-xs font-bold tracking-wider uppercase mb-2">Dias Auditados</p>
+                    <p class="text-4xl font-extrabold text-[#0b2240]" id="metricDias">30</p>
+                </div>
+                <!-- Card 2 -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                    <p class="text-slate-400 text-xs font-bold tracking-wider uppercase mb-2">Envios no Período</p>
+                    <p class="text-4xl font-extrabold text-[#0b2240]" id="metricEnvios">14.556.941</p>
+                </div>
+                <!-- Card 3 -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                    <p class="text-slate-400 text-xs font-bold tracking-wider uppercase mb-2">Campanhas &ge; 0,3%</p>
+                    <p class="text-4xl font-extrabold text-[#f43f5e]" id="metricCampanhas">18</p>
+                </div>
+                <!-- Card 4 -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                    <p class="text-slate-400 text-xs font-bold tracking-wider uppercase mb-2">Spam Médio por IP</p>
+                    <p class="text-4xl font-extrabold text-[#10b981]" id="metricSpam">0.18%</p>
+                </div>
+            </div>
+
+            <!-- ÁREA DO GRÁFICO & TABELA (Duas Colunas) -->
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+                
+                <!-- COLUNA DA ESQUERDA: GRÁFICO HISTÓRICO -->
+                <section class="xl:col-span-6 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-sm font-extrabold text-[#0b2240] tracking-wider uppercase flex items-center gap-2">
+                            <span class="w-1.5 h-4 bg-indigo-500 rounded-full"></span>
+                            SPAM POR IP (%) — LINHA DE HISTÓRICO
+                        </h2>
+                    </div>
+                    
+                    <!-- Container do Canvas Chart -->
+                    <div class="relative w-full h-[380px]">
+                        <canvas id="historicalChart"></canvas>
+                    </div>
+                </section>
+
+                <!-- COLUNA DA DIREITA: TABELA DE HISTÓRICO DIÁRIO -->
+                <section class="xl:col-span-6 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-4 h-full">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <h2 class="text-sm font-extrabold text-[#0b2240] tracking-wider uppercase flex items-center gap-2">
+                            <span>📋</span> HISTÓRICO DIÁRIO
+                        </h2>
+                        
+                        <!-- Barra de Pesquisa e Botão Exportar CSV -->
+                        <div class="flex items-center gap-2 w-full sm:w-auto">
+                            <div class="relative w-full sm:w-48">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 pointer-events-none">
+                                    <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                                </span>
+                                <input type="text" id="tableSearch" onkeyup="filterTable()" placeholder="Buscar data..." class="pl-8 pr-3 py-1.5 w-full rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            </div>
+                            <button onclick="downloadCSV()" class="bg-[#0b2240] hover:bg-slate-800 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1 shadow">
+                                <span>CSV</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tabela Responsiva com Scroll Customizado -->
+                    <div class="overflow-x-auto custom-scrollbar border border-slate-100 rounded-xl max-h-[380px]">
+                        <table class="min-w-full divide-y divide-slate-100 text-left" id="historyTable">
+                            <thead class="bg-slate-50 sticky top-0 z-10">
+                                <tr>
+                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">DATA</th>
+                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-right">ENVIOS</th>
+                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">≥ 0,3</th>
+                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">H1</th>
+                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">H9</th>
+                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">H12</th>
+                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">H14</th>
+                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">H15</th>
+                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">H16</th>
+                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">H18</th>
+                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">H19</th>
+                                    <th class="px-4 py-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider text-center">H21</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 bg-white" id="historyTableBody">
+                                <!-- Preenchido dinamicamente por Javascript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
         </div>
+
     </div>
-</div>
 
-<script>
-    // SEU NOVO LINK DE PUBLICAÇÃO CSV
-    const URL_PLANILHA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQzr0NHB8FBBK9r1symUNT2RO21ld25j6h7thMdOPFzuxqjJY3oncSAQjqEVgp1INZL_uusUlwo1p8N/pub?output=csv";
+    <!-- BANNER DE LEGENDA DO FOOTER (Comum a ambas as telas) -->
+    <footer class="mt-6 max-w-[1600px] w-full mx-auto">
+        <div class="bg-[#0b2240] text-white py-3 px-6 rounded-2xl flex flex-wrap items-center justify-center gap-4 md:gap-6 text-xs font-semibold shadow-sm tracking-wide">
+            <span class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-[#00b489]"></span>
+                Excelente: &lt; 0.10%
+            </span>
+            <span class="text-slate-500 hidden md:inline">|</span>
+            <span class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-[#f3a83b]"></span>
+                Saudável: 0.10% - 0.29%
+            </span>
+            <span class="text-slate-500 hidden md:inline">|</span>
+            <span class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-[#f43f5e]"></span>
+                Crítico: &ge; 0.30%
+            </span>
+        </div>
+    </footer>
 
-    let chart;
+    <!-- Sistema Simples de Toasts/Notificações (Evitando alerts nativos) -->
+    <div id="toast" class="fixed bottom-20 right-6 bg-[#0c2340] text-white border border-slate-700 px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 transform translate-y-20 opacity-0 pointer-events-none flex items-center gap-2 z-50">
+        <span id="toastIcon">💡</span>
+        <span id="toastText">Ação efetuada com sucesso!</span>
+    </div>
 
-    async function sincronizar() {
-        const loading = document.getElementById('loading-overlay');
-        loading.style.display = 'block';
-        
-        try {
-            const response = await fetch(URL_PLANILHA + "&nocache=" + new Date().getTime());
-            const csvText = await response.text();
-            processarDados(csvText);
-        } catch (error) {
-            alert("Erro ao carregar dados. Verifique a conexão.");
-        } finally {
-            loading.style.display = 'none';
+    <!-- ================= SISTEMA DE DADOS E DINÂMICA (JAVASCRIPT) ================= -->
+    <script>
+        // Dados Estruturados para replicar perfeitamente os Projetos mostrados no Print 1 e Print 2
+        const projectsData = [
+            {
+                id: 404,
+                title: "Projeto 404",
+                subtitle: "SOLINERO MX — NÚCLEO PRINCIPAL",
+                badge: "SEM DADOS",
+                badgeStyle: "bg-emerald-50 text-emerald-600 font-bold border border-emerald-100",
+                ultimoDia: "24-05 (dom.)",
+                envios: "344.210",
+                hojeGe03: "0",
+                statusGeral: "SAUDÁVEL - 0.18%",
+                badgeGeralStyle: "bg-[#00b489]/10 text-[#00b489] border-[#00b489]/20",
+                mDias: "30",
+                mEnvios: "14.556.941",
+                mCampanhas: "18",
+                mSpam: "0.18%",
+                detalhesTabela: [
+                    { data: "24-05 (dom.)", envios: "344.210", ge03: "0", h1: "—", h9: "—", h12: "—", h14: "—", h15: "—", h16: "—", h18: "—", h19: "—", h21: "—" },
+                    { data: "23-05 (sáb.)", envios: "371.232", ge03: "3", h1: "0.51%", h9: "0.30%", h12: "0.34%", h14: "0.13%", h15: "0.30%", h16: "0.14%", h18: "0.17%", h19: "0.09%", h21: "—" },
+                    { data: "22-05 (sex.)", envios: "814.263", ge03: "0", h1: "0.10%", h9: "0.09%", h12: "0.09%", h14: "0.09%", h15: "0.09%", h16: "0.14%", h18: "0.24%", h19: "—", h21: "0.10%" },
+                    { data: "21-05 (qui.)", envios: "625.914", ge03: "0", h1: "0.09%", h9: "0.09%", h12: "0.06%", h14: "0.26%", h15: "0.09%", h16: "0.19%", h18: "0.19%", h19: "0.19%", h21: "0.09%" },
+                    { data: "20-05 (qua.)", envios: "404.161", ge03: "0", h1: "0.09%", h9: "0.00%", h12: "0.11%", h14: "0.12%", h15: "0.00%", h16: "0.09%", h18: "0.17%", h19: "0.00%", h21: "0.09%" }
+                ],
+                datasetsSpam: [
+                    { label: "CTR U.", data: [0.38, 0.29, 0.11, 0.24, 0.13, 0.38], color: "#8b5cf6" },
+                    { label: "ENVIOS", data: [0.29, 0.19, 0.23, 0.19, 0.22, 0.35], color: "#f43f5e" },
+                    { label: "GERAL", data: [0.32, 0.17, 0.14, 0.22, 0.19, 0.25], color: "#f59e0b" },
+                    { label: "H1", data: [0.34, 0.48, 0.10, 0.09, 0.09, 0.49], color: "#06b6d4" },
+                    { label: "H12", data: [0.15, 0.22, 0.29, 0.19, 0.25, 0.18], color: "#eab308" },
+                    { label: "H14", data: [0.39, 0.26, 0.11, 0.34, 0.25, 0.22], color: "#ec4899" },
+                    { label: "H15", data: [0.24, 0.34, 0.20, 0.10, 0.24, 0.14], color: "#10b981" }
+                ]
+            },
+            {
+                id: 2513,
+                title: "Projeto 2513",
+                subtitle: "MX02 — EP10",
+                badge: "SEM DADOS",
+                badgeStyle: "bg-emerald-50 text-emerald-600 font-bold border border-emerald-100",
+                ultimoDia: "24-05 (dom.)",
+                envios: "65.515",
+                hojeGe03: "0",
+                statusGeral: "EXCELENTE - 0.07%",
+                badgeGeralStyle: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+                mDias: "30",
+                mEnvios: "2.456.120",
+                mCampanhas: "4",
+                mSpam: "0.07%",
+                detalhesTabela: [
+                    { data: "24-05 (dom.)", envios: "65.515", ge03: "0", h1: "0.04%", h9: "0.06%", h12: "0.05%", h14: "—", h15: "0.02%", h16: "0.05%", h18: "0.04%", h19: "—", h21: "0.05%" },
+                    { data: "23-05 (sáb.)", envios: "71.450", ge03: "1", h1: "0.32%", h9: "0.12%", h12: "0.08%", h14: "0.04%", h15: "0.05%", h16: "0.07%", h18: "0.06%", h19: "0.05%", h21: "—" },
+                    { data: "22-05 (sex.)", envios: "120.400", ge03: "0", h1: "0.08%", h9: "0.07%", h12: "0.07%", h14: "0.05%", h15: "0.06%", h16: "0.06%", h18: "0.09%", h19: "—", h21: "0.08%" }
+                ],
+                datasetsSpam: [
+                    { label: "CTR U.", data: [0.12, 0.08, 0.14, 0.09, 0.11, 0.07], color: "#8b5cf6" },
+                    { label: "GERAL", data: [0.08, 0.06, 0.09, 0.05, 0.07, 0.04], color: "#f59e0b" },
+                    { label: "H1", data: [0.15, 0.11, 0.12, 0.08, 0.09, 0.05], color: "#06b6d4" }
+                ]
+            },
+            {
+                id: 2547,
+                title: "Projeto 2547",
+                subtitle: "AQUISIÇÃO SEGMENTADA",
+                badge: "SEM DADOS",
+                badgeStyle: "bg-emerald-50 text-emerald-600 font-bold border border-emerald-100",
+                ultimoDia: "24-05 (dom.)",
+                envios: "5.497",
+                hojeGe03: "0",
+                statusGeral: "EXCELENTE - 0.04%",
+                badgeGeralStyle: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+                mDias: "30",
+                mEnvios: "180.200",
+                mCampanhas: "1",
+                mSpam: "0.04%",
+                detalhesTabela: [
+                    { data: "24-05 (dom.)", envios: "5.497", ge03: "0", h1: "—", h9: "—", h12: "—", h14: "—", h15: "—", h16: "—", h18: "—", h19: "—", h21: "—" },
+                    { data: "23-05 (sáb.)", envios: "6.210", ge03: "0", h1: "0.04%", h9: "0.03%", h12: "0.02%", h14: "0.04%", h15: "—", h16: "0.02%", h18: "0.01%", h19: "0.03%", h21: "0.04%" }
+                ],
+                datasetsSpam: [
+                    { label: "CTR U.", data: [0.05, 0.04, 0.06, 0.03, 0.04, 0.02], color: "#8b5cf6" },
+                    { label: "H1", data: [0.04, 0.03, 0.05, 0.02, 0.03, 0.01], color: "#06b6d4" }
+                ]
+            },
+            {
+                id: 2470,
+                title: "Projeto 2470",
+                subtitle: "LISTAS FRIAS",
+                badge: "SEM DADOS",
+                badgeStyle: "bg-emerald-50 text-emerald-600 font-bold border border-emerald-100",
+                ultimoDia: "24-05 (dom.)",
+                envios: "17.060",
+                hojeGe03: "0",
+                statusGeral: "CRÍTICO - 0.35%",
+                badgeGeralStyle: "bg-rose-500/10 text-rose-500 border-rose-500/20",
+                mDias: "30",
+                mEnvios: "520.400",
+                mCampanhas: "24",
+                mSpam: "0.35%",
+                detalhesTabela: [
+                    { data: "24-05 (dom.)", envios: "17.060", ge03: "0", h1: "—", h9: "—", h12: "—", h14: "—", h15: "—", h16: "—", h18: "—", h19: "—", h21: "—" },
+                    { data: "23-05 (sáb.)", envios: "18.410", ge03: "8", h1: "0.62%", h9: "0.45%", h12: "0.39%", h14: "0.22%", h15: "0.34%", h16: "0.41%", h18: "0.38%", h19: "0.19%", h21: "—" },
+                    { data: "22-05 (sex.)", envios: "22.300", ge03: "12", h1: "0.41%", h9: "0.38%", h12: "0.36%", h14: "0.31%", h15: "0.33%", h16: "0.30%", h18: "0.35%", h19: "—", h21: "0.40%" }
+                ],
+                datasetsSpam: [
+                    { label: "CTR U.", data: [0.45, 0.55, 0.41, 0.39, 0.42, 0.38], color: "#8b5cf6" },
+                    { label: "ENVIOS", data: [0.38, 0.42, 0.39, 0.31, 0.35, 0.33], color: "#f43f5e" },
+                    { label: "H1", data: [0.62, 0.51, 0.45, 0.36, 0.40, 0.35], color: "#06b6d4" }
+                ]
+            }
+        ];
+
+        let activeChart = null;
+        let selectedProject = null;
+
+        // Renderização Inicial
+        window.onload = function() {
+            renderProjectsGrid();
+        };
+
+        // Renderiza os cards do Hub conforme o Print 1
+        function renderProjectsGrid() {
+            const grid = document.getElementById('projectsGrid');
+            grid.innerHTML = '';
+
+            projectsData.forEach(proj => {
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between overflow-hidden relative border-l-4 border-l-[#00b489]";
+                card.innerHTML = `
+                    <div class="p-6 md:p-8 flex flex-col gap-4">
+                        <!-- Topo Card -->
+                        <div class="flex justify-between items-start gap-2">
+                            <div>
+                                <span class="text-[10px] md:text-xs font-extrabold tracking-wider text-slate-400 uppercase">${proj.subtitle}</span>
+                                <h3 class="text-xl md:text-2xl font-black text-[#0b2240] mt-1">${proj.title}</h3>
+                            </div>
+                            <span class="${proj.badgeStyle} text-[10px] md:text-xs font-extrabold tracking-wider px-3 py-1 rounded-full uppercase">
+                                ${proj.badge}
+                            </span>
+                        </div>
+
+                        <!-- Métricas Centrais -->
+                        <div class="grid grid-cols-3 gap-2 py-4 border-y border-slate-100 mt-2">
+                            <div class="text-center sm:text-left">
+                                <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">ÚLTIMO DIA</p>
+                                <p class="text-sm md:text-base font-extrabold text-[#0b2240]">${proj.ultimoDia}</p>
+                            </div>
+                            <div class="text-center sm:text-left">
+                                <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">ENVIOS</p>
+                                <p class="text-sm md:text-base font-extrabold text-[#0b2240]">${proj.envios}</p>
+                            </div>
+                            <div class="text-center sm:text-left">
+                                <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">&ge; 0,3 HOJE</p>
+                                <p class="text-sm md:text-base font-extrabold text-[#0b2240]">${proj.hojeGe03}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rodapé Card -->
+                    <div class="bg-slate-50/50 px-6 py-4 border-t border-slate-100 flex justify-between items-center gap-4">
+                        <button onclick="refreshSingleCard(this)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 text-slate-500 text-xs font-semibold hover:bg-slate-100 transition-all duration-200">
+                            <i class="fa-solid fa-arrows-rotate text-[10px]"></i>
+                            <span>ATUALIZAR</span>
+                        </button>
+                        <button onclick="openDashboard(${proj.id})" class="flex items-center gap-2 bg-[#0b2240] hover:bg-indigo-900 text-white px-5 py-2 rounded-full text-xs font-extrabold tracking-wider transition-all duration-200 shadow-sm">
+                            <span>ABRIR DASHBOARD</span>
+                            <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
         }
-    }
 
-    function processarDados(csv) {
-        const linhas = csv.split(/\r?\n/);
-        const tbody = document.querySelector("#tabelaDados tbody");
-        tbody.innerHTML = "";
+        // Navegação para a Tela de Dashboard (Print 2)
+        function openDashboard(projectId) {
+            const proj = projectsData.find(p => p.id === projectId);
+            if (!proj) return;
+            selectedProject = proj;
 
-        const datas = [];
-        const valoresSpam = [];
+            // Transição Suave de Telas
+            document.getElementById('hubView').classList.add('hidden');
+            document.getElementById('dashboardView').classList.remove('hidden');
 
-        // Começamos do 1 para pular o cabeçalho
-        for (let i = 1; i < linhas.length; i++) {
-            const colunas = linhas[i].split(",");
-            if (colunas.length < 3) continue;
+            // Setar Textos do Projeto Selecionado
+            document.getElementById('dashProjectTitle').innerText = proj.title;
+            document.getElementById('dashProjectSubtitle').innerText = proj.subtitle;
+            
+            const badge = document.getElementById('dashStatusBadge');
+            badge.innerText = proj.statusGeral;
+            // Remover classes de cores anteriores
+            badge.className = "text-xs font-black px-4 py-2 rounded-full border tracking-wider " + getBadgeColorClass(proj.statusGeral);
 
-            const dataStr = colunas[0].trim();
-            const campanha = colunas[1].trim();
-            let spamRaw = colunas[2].trim().replace("%", "").replace(",", ".");
-            const spamNum = parseFloat(spamRaw);
+            // Setar Métricas
+            document.getElementById('metricDias').innerText = proj.mDias;
+            document.getElementById('metricEnvios').innerText = proj.mEnvios;
+            document.getElementById('metricCampanhas').innerText = proj.mCampanhas;
+            document.getElementById('metricSpam').innerText = proj.mSpam;
 
-            if (!isNaN(spamNum)) {
-                // Criar linha na tabela
-                const statusClass = spamNum >= 0.30 ? "badge-ruim" : "badge-bom";
-                const statusTxt = spamNum >= 0.30 ? "CRÍTICO" : "OK";
+            // Preencher Tabela
+            renderTableData(proj.detalhesTabela);
 
-                const tr = document.createElement("tr");
+            // Gerar Gráfico ChartJS
+            buildHistoricalChart(proj);
+
+            showToast(`Dashboard do ${proj.title} carregado`);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Retornar ao Hub (Print 1)
+        function backToHub() {
+            document.getElementById('dashboardView').classList.add('hidden');
+            document.getElementById('hubView').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Helper para classes de badges do Dashboard
+        function getBadgeColorClass(statusText) {
+            if (statusText.includes("EXCELENTE")) {
+                return "bg-emerald-50 text-emerald-600 border-emerald-200";
+            } else if (statusText.includes("SAUDÁVEL")) {
+                return "bg-amber-50 text-amber-600 border-amber-200";
+            } else {
+                return "bg-rose-50 text-rose-600 border-rose-200";
+            }
+        }
+
+        // Preenche as linhas da tabela de histórico diário
+        function renderTableData(rows) {
+            const tbody = document.getElementById('historyTableBody');
+            tbody.innerHTML = '';
+
+            rows.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors";
+                
                 tr.innerHTML = `
-                    <td>${dataStr}</td>
-                    <td style="font-weight:600; color:var(--teal)">${campanha}</td>
-                    <td>${spamNum.toFixed(2)}%</td>
-                    <td><span class="badge ${statusClass}">${statusTxt}</span></td>
+                    <td class="px-4 py-3 text-xs font-bold text-[#0b2240] whitespace-nowrap">${r.data}</td>
+                    <td class="px-4 py-3 text-xs font-bold text-[#0b2240] text-right whitespace-nowrap">${r.envios}</td>
+                    <td class="px-4 py-3 text-xs text-center whitespace-nowrap">${renderGe03Badge(r.ge03)}</td>
+                    <td class="px-4 py-3 text-xs font-bold text-center whitespace-nowrap ${getSpamColorClass(r.h1)}">${r.h1}</td>
+                    <td class="px-4 py-3 text-xs font-bold text-center whitespace-nowrap ${getSpamColorClass(r.h9)}">${r.h9}</td>
+                    <td class="px-4 py-3 text-xs font-bold text-center whitespace-nowrap ${getSpamColorClass(r.h12)}">${r.h12}</td>
+                    <td class="px-4 py-3 text-xs font-bold text-center whitespace-nowrap ${getSpamColorClass(r.h14)}">${r.h14}</td>
+                    <td class="px-4 py-3 text-xs font-bold text-center whitespace-nowrap ${getSpamColorClass(r.h15)}">${r.h15}</td>
+                    <td class="px-4 py-3 text-xs font-bold text-center whitespace-nowrap ${getSpamColorClass(r.h16)}">${r.h16}</td>
+                    <td class="px-4 py-3 text-xs font-bold text-center whitespace-nowrap ${getSpamColorClass(r.h18)}">${r.h18}</td>
+                    <td class="px-4 py-3 text-xs font-bold text-center whitespace-nowrap ${getSpamColorClass(r.h19)}">${r.h19}</td>
+                    <td class="px-4 py-3 text-xs font-bold text-center whitespace-nowrap ${getSpamColorClass(r.h21)}">${r.h21}</td>
                 `;
                 tbody.appendChild(tr);
+            });
+        }
 
-                // Guardar para o gráfico
-                datas.push(dataStr);
-                valoresSpam.push(spamNum);
+        // Classificação de cor para percentuais de spam conforme a legenda
+        function getSpamColorClass(val) {
+            if (!val || val === "—") return "text-slate-400 font-normal";
+            const num = parseFloat(val.replace('%', ''));
+            if (num < 0.10) {
+                return "text-[#00b489]"; // Excelente
+            } else if (num >= 0.10 && num < 0.30) {
+                return "text-[#f3a83b]"; // Saudável
+            } else {
+                return "text-[#f43f5e]"; // Crítico
             }
         }
 
-        desenharGrafico(datas.reverse(), valoresSpam.reverse());
-    }
+        // Renderiza badge especial para colunas >= 0.3
+        function renderGe03Badge(val) {
+            const num = parseInt(val);
+            if (num > 0) {
+                return `<span class="bg-rose-50 text-rose-600 font-extrabold px-2.5 py-0.5 rounded-md border border-rose-100">${val}</span>`;
+            }
+            return `<span class="text-slate-400">0</span>`;
+        }
 
-    function desenharGrafico(labels, values) {
-        const ctx = document.getElementById('graficoSpam').getContext('2d');
-        
-        if (chart) chart.destroy();
+        // Constrói Gráfico Multilinhas Idêntico ao Print 2
+        function buildHistoricalChart(proj) {
+            const ctx = document.getElementById('historicalChart').getContext('2d');
+            
+            if (activeChart) {
+                activeChart.destroy();
+            }
 
-        chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Taxa de Spam (%)',
-                    data: values,
-                    borderColor: '#02C39A',
-                    backgroundColor: 'rgba(2, 195, 154, 0.1)',
-                    fill: true,
-                    tension: 0.4,
-                    borderWidth: 3,
-                    pointRadius: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { callback: (value) => value + '%' }
-                    }
+            // Labels temporais
+            const labels = ["25-04 (sáb.)", "28-04 (ter.)", "01-05 (sex.)", "04-05 (seg.)", "07-05 (qui.)", "10-05 (dom.)", "13-05 (qua.)", "16-05 (sáb.)", "19-05 (ter.)", "24-05 (dom.)"];
+            
+            // Construir datasets dinamicamente
+            const datasets = proj.datasetsSpam.map(ds => {
+                // Interpolação para desenhar curvas suaves
+                return {
+                    label: ds.label,
+                    data: ds.data,
+                    borderColor: ds.color,
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    tension: 0.4
+                };
+            });
+
+            // Linha Guia de Teto de Alerta (Linha tracejada de Teto 0.3%)
+            datasets.push({
+                label: "Teto 0.3%",
+                data: Array(labels.length).fill(0.30),
+                borderColor: '#f43f5e',
+                borderDash: [5, 5],
+                borderWidth: 1.5,
+                pointRadius: 0,
+                fill: false,
+                labelColor: '#f43f5e'
+            });
+
+            activeChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
                 },
-                plugins: {
-                    legend: { display: false }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 10,
+                                boxHeight: 10,
+                                padding: 12,
+                                font: {
+                                    size: 10,
+                                    weight: 'bold'
+                                },
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: '#0b2240',
+                            titleFont: { size: 12, weight: 'bold' },
+                            bodyFont: { size: 11 },
+                            padding: 10,
+                            cornerRadius: 8
+                        }
+                    },
+                    scales: {
+                        y: {
+                            min: 0.00,
+                            max: 0.60,
+                            ticks: {
+                                stepSize: 0.15,
+                                callback: function(value) {
+                                    return value.toFixed(2) + '%';
+                                },
+                                color: '#94a3b8',
+                                font: { size: 10, weight: '600' }
+                            },
+                            grid: {
+                                color: '#f1f5f9'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#94a3b8',
+                                font: { size: 10, weight: '600' }
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Filtro interativo na tabela "HISTÓRICO DIÁRIO"
+        function filterTable() {
+            const input = document.getElementById("tableSearch");
+            const filter = input.value.toUpperCase();
+            const table = document.getElementById("historyTable");
+            const tr = table.getElementsByTagName("tr");
+
+            for (let i = 1; i < tr.length; i++) {
+                const td = tr[i].getElementsByTagName("td")[0]; // Coluna DATA
+                if (td) {
+                    const txtValue = td.textContent || td.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        tr[i].style.display = "";
+                    } else {
+                        tr[i].style.display = "none";
+                    }
                 }
             }
-        });
-    }
+        }
 
-    // Carregar ao abrir a página
-    window.onload = sincronizar;
-</script>
+        // Ações de Filtros de Período do Dashboard
+        function setPeriod(period) {
+            // Resetar botões
+            ['7d', '30d', '90d', 'all'].forEach(p => {
+                const btn = document.getElementById(`btn-${p}`);
+                btn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 text-slate-500 hover:text-[#0b2240]";
+            });
+            // Ativar selecionado
+            const activeBtn = document.getElementById(`btn-${period}`);
+            activeBtn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 bg-indigo-50 text-indigo-600 shadow-sm";
 
+            // Simular alteração de dados no Gráfico e Métricas com animação suave
+            if (selectedProject) {
+                const factor = period === '7d' ? 0.7 : period === '90d' ? 1.4 : period === 'all' ? 2 : 1;
+                
+                // Modificar levemente as métricas de simulação
+                const baseEnvios = parseInt(selectedProject.mEnvios.replace(/\./g, ''));
+                document.getElementById('metricEnvios').innerText = Math.round(baseEnvios * factor).toLocaleString('pt-BR');
+                document.getElementById('metricDias').innerText = period === '7d' ? '7' : period === '30d' ? '30' : period === '90d' ? '90' : '150';
+                
+                // Re-gerar dados simulados do gráfico
+                activeChart.data.datasets.forEach(dataset => {
+                    if (dataset.label !== 'Teto 0.3%') {
+                        dataset.data = dataset.data.map(val => Math.min(0.55, Math.max(0.01, val * (0.8 + Math.random() * 0.4))));
+                    }
+                });
+                activeChart.update();
+                showToast(`Filtrado por ${period === 'all' ? 'todo o período' : period}`);
+            }
+        }
+
+        // Exportador de CSV Funcional
+        function downloadCSV() {
+            if (!selectedProject) return;
+            
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "DATA,ENVIOS,GE03,H1,H9,H12,H14,H15,H16,H18,H19,H21\n";
+            
+            selectedProject.detalhesTabela.forEach(r => {
+                csvContent += `${r.data},${r.envios.replace('.', '')},${r.ge03},${r.h1},${r.h9},${r.h12},${r.h14},${r.h15},${r.h16},${r.h18},${r.h19},${r.h21}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `historico_${selectedProject.title.toLowerCase().replace(' ', '_')}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("Planilha CSV baixada!");
+        }
+
+        // Simulação de Loading de atualização para os cards da home individualmente
+        function refreshSingleCard(btnElement) {
+            const icon = btnElement.querySelector('i');
+            icon.classList.add('fa-spin');
+            btnElement.disabled = true;
+            
+            setTimeout(() => {
+                icon.classList.remove('fa-spin');
+                btnElement.disabled = false;
+                showToast("Dados do projeto atualizados!");
+            }, 1000);
+        }
+
+        // Simulação de Atualização Geral do Dashboard Principal
+        function triggerRefresh() {
+            const icon = document.getElementById('refreshIconDash');
+            icon.classList.add('fa-spin');
+            
+            // Randomiza dados ligeiramente para parecer real
+            setTimeout(() => {
+                icon.classList.remove('fa-spin');
+                if (selectedProject) {
+                    const randomSpam = (0.10 + Math.random() * 0.15).toFixed(2) + "%";
+                    document.getElementById('metricSpam').innerText = randomSpam;
+                    
+                    // Atualiza a hora da última atualização para o momento atual
+                    const agora = new Date();
+                    const horaFormatada = agora.toLocaleDateString('pt-BR') + ", " + agora.toLocaleTimeString('pt-BR');
+                    document.getElementById('dashUpdateTime').innerText = horaFormatada;
+
+                    // Animar gráfico
+                    activeChart.data.datasets.forEach(dataset => {
+                        if (dataset.label !== 'Teto 0.3%') {
+                            dataset.data = dataset.data.map(val => Math.min(0.55, Math.max(0.01, val * (0.9 + Math.random() * 0.2))));
+                        }
+                    });
+                    activeChart.update();
+                }
+                showToast("Métricas atualizadas com sucesso!");
+            }, 1200);
+        }
+
+        // Toast de feedback
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const text = document.getElementById('toastText');
+            text.innerText = message;
+            
+            toast.classList.remove('opacity-0', 'translate-y-20', 'pointer-events-none');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-20', 'pointer-events-none');
+                toast.classList.remove('opacity-100', 'translate-y-0');
+            }, 3000);
+        }
+    </script>
 </body>
 </html>
