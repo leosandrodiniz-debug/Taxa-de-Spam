@@ -97,8 +97,8 @@
                 <!-- Controles do Header -->
                 <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
                     <!-- Status Badge -->
-                    <span id="dashStatusBadge" class="bg-[#00b489]/20 text-[#00b489] text-xs font-black px-4 py-2 rounded-full border border-[#00b489]/30 tracking-wider">
-                        SAUDÁVEL - 0.18%
+                    <span id="dashStatusBadge" class="bg-[#f3a83b]/20 text-[#f3a83b] text-xs font-black px-4 py-2 rounded-full border border-[#f3a83b]/30 tracking-wider">
+                        ⚠️ OTIMIZAR - 0.18%
                     </span>
                     <!-- Atualizar -->
                     <button class="flex items-center gap-2 border border-slate-700 hover:bg-[#173052] px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 text-slate-300 hover:text-white" onclick="triggerRefresh()">
@@ -248,17 +248,17 @@
         <div class="bg-[#0b2240] text-white py-3 px-6 rounded-2xl flex flex-wrap items-center justify-center gap-4 md:gap-6 text-xs font-semibold shadow-sm tracking-wide">
             <span class="flex items-center gap-2">
                 <span class="w-2.5 h-2.5 rounded-full bg-[#00b489]"></span>
-                Excelente: &lt; 0.10%
+                ✅ Aprovado: &lt; 0.10%
             </span>
             <span class="text-slate-500 hidden md:inline">|</span>
             <span class="flex items-center gap-2">
                 <span class="w-2.5 h-2.5 rounded-full bg-[#f3a83b]"></span>
-                Saudável: 0.10% - 0.29%
+                ⚠️ Otimizar: 0.10% - 0.29%
             </span>
             <span class="text-slate-500 hidden md:inline">|</span>
             <span class="flex items-center gap-2">
                 <span class="w-2.5 h-2.5 rounded-full bg-[#f43f5e]"></span>
-                Crítico: &ge; 0.30%
+                ❌ Remover: &ge; 0.30%
             </span>
         </div>
     </footer>
@@ -271,7 +271,7 @@
 
     <!-- ================= SISTEMA DE DADOS E DINÂMICA (JAVASCRIPT) ================= -->
     <script>
-        // Dados Estruturados para replicar perfeitamente os Projetos mostrados no Print 1 e Print 2
+        // Dados Estruturados com as classificações atualizadas para Aprovado, Otimizar e Remover
         const projectsData = [
             {
                 id: 404,
@@ -282,8 +282,8 @@
                 ultimoDia: "24-05 (dom.)",
                 envios: "344.210",
                 hojeGe03: "0",
-                statusGeral: "SAUDÁVEL - 0.18%",
-                badgeGeralStyle: "bg-[#00b489]/10 text-[#00b489] border-[#00b489]/20",
+                statusGeral: "⚠️ OTIMIZAR - 0.18%",
+                badgeGeralStyle: "bg-[#f3a83b]/10 text-[#f3a83b] border-[#f3a83b]/20",
                 mDias: "30",
                 mEnvios: "14.556.941",
                 mCampanhas: "18",
@@ -314,7 +314,7 @@
                 ultimoDia: "24-05 (dom.)",
                 envios: "65.515",
                 hojeGe03: "0",
-                statusGeral: "EXCELENTE - 0.07%",
+                statusGeral: "✅ APROVADO - 0.07%",
                 badgeGeralStyle: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
                 mDias: "30",
                 mEnvios: "2.456.120",
@@ -340,7 +340,7 @@
                 ultimoDia: "24-05 (dom.)",
                 envios: "5.497",
                 hojeGe03: "0",
-                statusGeral: "EXCELENTE - 0.04%",
+                statusGeral: "✅ APROVADO - 0.04%",
                 badgeGeralStyle: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
                 mDias: "30",
                 mEnvios: "180.200",
@@ -364,7 +364,7 @@
                 ultimoDia: "24-05 (dom.)",
                 envios: "17.060",
                 hojeGe03: "0",
-                statusGeral: "CRÍTICO - 0.35%",
+                statusGeral: "❌ REMOVER - 0.35%",
                 badgeGeralStyle: "bg-rose-500/10 text-rose-500 border-rose-500/20",
                 mDias: "30",
                 mEnvios: "520.400",
@@ -490,14 +490,14 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // Helper para classes de badges do Dashboard
+        // Helper para mapear os novos badges baseados em Aprovado, Otimizar e Remover
         function getBadgeColorClass(statusText) {
-            if (statusText.includes("EXCELENTE")) {
-                return "bg-emerald-50 text-emerald-600 border-emerald-200";
-            } else if (statusText.includes("SAUDÁVEL")) {
-                return "bg-amber-50 text-amber-600 border-amber-200";
+            if (statusText.includes("APROVADO")) {
+                return "bg-emerald-50 text-emerald-600 border-emerald-200"; // Verde
+            } else if (statusText.includes("OTIMIZAR")) {
+                return "bg-amber-50 text-amber-500 border-amber-200"; // Amarelo
             } else {
-                return "bg-rose-50 text-rose-600 border-rose-200";
+                return "bg-rose-50 text-rose-600 border-rose-200"; // Vermelho
             }
         }
 
@@ -528,16 +528,16 @@
             });
         }
 
-        // Classificação de cor para percentuais de spam conforme a legenda
+        // Classificação de cor para percentuais de spam baseados nas novas categorias
         function getSpamColorClass(val) {
             if (!val || val === "—") return "text-slate-400 font-normal";
             const num = parseFloat(val.replace('%', ''));
             if (num < 0.10) {
-                return "text-[#00b489]"; // Excelente
+                return "text-[#00b489]"; // Verde (Aprovado)
             } else if (num >= 0.10 && num < 0.30) {
-                return "text-[#f3a83b]"; // Saudável
+                return "text-[#f3a83b]"; // Amarelo (Otimizar)
             } else {
-                return "text-[#f43f5e]"; // Crítico
+                return "text-[#f43f5e]"; // Vermelho (Remover)
             }
         }
 
@@ -545,7 +545,7 @@
         function renderGe03Badge(val) {
             const num = parseInt(val);
             if (num > 0) {
-                return `<span class="bg-rose-50 text-rose-600 font-extrabold px-2.5 py-0.5 rounded-md border border-rose-100">${val}</span>`;
+                return `<span class="bg-rose-50 text-rose-600 font-extrabold px-2.5 py-0.5 rounded-md border border-rose-100">⚠️ ${val}</span>`;
             }
             return `<span class="text-slate-400">0</span>`;
         }
@@ -578,7 +578,7 @@
 
             // Linha Guia de Teto de Alerta (Linha tracejada de Teto 0.3%)
             datasets.push({
-                label: "Teto 0.3%",
+                label: "Teto 0.3% (Remover)",
                 data: Array(labels.length).fill(0.30),
                 borderColor: '#f43f5e',
                 borderDash: [5, 5],
@@ -744,9 +744,9 @@
                         label: 'Taxa Média de Spam',
                         data: campaignData,
                         backgroundColor: campaignData.map(val => {
-                            if (val < 0.10) return '#00b489'; // Verde Excelente
-                            if (val < 0.30) return '#f3a83b'; // Laranja Saudável
-                            return '#f43f5e'; // Vermelho Crítico
+                            if (val < 0.10) return '#00b489'; // Verde (Aprovado)
+                            if (val < 0.30) return '#f3a83b'; // Amarelo (Otimizar)
+                            return '#f43f5e'; // Vermelho (Remover)
                         }),
                         borderRadius: 6,
                         maxBarThickness: 16
@@ -832,7 +832,7 @@
                 
                 // Re-gerar dados simulados do gráfico de histórico
                 activeChart.data.datasets.forEach(dataset => {
-                    if (dataset.label !== 'Teto 0.3%') {
+                    if (!dataset.label.includes('Teto')) {
                         dataset.data = dataset.data.map(val => Math.min(0.55, Math.max(0.01, val * (0.8 + Math.random() * 0.4))));
                     }
                 });
@@ -892,9 +892,21 @@
             setTimeout(() => {
                 icon.classList.remove('fa-spin');
                 if (selectedProject) {
-                    const randomSpam = (0.10 + Math.random() * 0.15).toFixed(2) + "%";
-                    document.getElementById('metricSpam').innerText = randomSpam;
+                    const randomSpamVal = (0.05 + Math.random() * 0.35);
+                    let label = "✅ APROVADO";
+                    if (randomSpamVal >= 0.10 && randomSpamVal < 0.30) {
+                        label = "⚠️ OTIMIZAR";
+                    } else if (randomSpamVal >= 0.30) {
+                        label = "❌ REMOVER";
+                    }
+
+                    const formattedSpamLabel = `${label} - ${randomSpamVal.toFixed(2)}%`;
+                    document.getElementById('metricSpam').innerText = randomSpamVal.toFixed(2) + "%";
                     
+                    const badge = document.getElementById('dashStatusBadge');
+                    badge.innerText = formattedSpamLabel;
+                    badge.className = "text-xs font-black px-4 py-2 rounded-full border tracking-wider " + getBadgeColorClass(formattedSpamLabel);
+
                     // Atualiza a hora da última atualização para o momento atual
                     const agora = new Date();
                     const horaFormatada = agora.toLocaleDateString('pt-BR') + ", " + agora.toLocaleTimeString('pt-BR');
@@ -902,7 +914,7 @@
 
                     // Animar gráfico principal
                     activeChart.data.datasets.forEach(dataset => {
-                        if (dataset.label !== 'Teto 0.3%') {
+                        if (!dataset.label.includes('Teto')) {
                             dataset.data = dataset.data.map(val => Math.min(0.55, Math.max(0.01, val * (0.9 + Math.random() * 0.2))));
                         }
                     });
