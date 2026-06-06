@@ -2,116 +2,151 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Projeto 404 — Executive War Room</title>
-    <!-- Resolve o erro do Favicon -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
-    
+    <title>Projeto 404 — Solinero MX</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --navy: #0A2540; --mint: #02C39A; --bg: #F4F6F9; }
-        body { background: var(--bg); font-family: sans-serif; padding: 20px; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .btn { background: var(--mint); border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border-bottom: 1px solid #ddd; padding: 10px; text-align: left; font-size: 13px; }
-        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; }
-        .bom { background: #dcfce7; color: #166534; }
-        #debug-console { background: #333; color: #0f0; padding: 10px; font-family: monospace; font-size: 11px; margin-top: 20px; border-radius: 5px; height: 100px; overflow-y: auto; }
+        body { background: var(--bg); font-family: 'Segoe UI', sans-serif; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        header { background: var(--navy); color: white; padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .btn { background: var(--mint); border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { background: #f8f9fa; padding: 12px; text-align: left; border-bottom: 2px solid #eee; }
+        td { padding: 12px; border-bottom: 1px solid #eee; }
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .critico { background: #fee2e2; color: #991b1b; }
+        .saudavel { background: #dcfce7; color: #166534; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h2>Dashboard Solinero - Projeto <span id="proj-id">404</span></h2>
-        <button class="btn" onclick="fetchData()">🔄 Sincronizar Agora</button>
+<header>
+    <div>
+        <h1>Projeto 404 — Geral</h1>
+        <p id="status-text">Aguardando sincronização...</p>
+    </div>
+    <button class="btn" onclick="fetchData()">🔄 Sincronizar Dados</button>
+</header>
+
+<div class="grid">
+    <div class="card">
+        <h3>Histórico de Spam (%)</h3>
+        <div style="height: 300px;"><canvas id="chartSpam"></canvas></div>
+    </div>
+    <div class="card">
+        <h3>Log de Campanhas</h3>
+        <div style="max-height: 300px; overflow-y: auto;">
+            <table id="dataTable">
+                <thead>
+                    <tr><th>DATA</th><th>CAMPANHA</th><th>SPAM %</th><th>STATUS</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
     </div>
 </div>
-
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-    <div class="card">
-        <h3>Tendência de Spam</h3>
-        <canvas id="chartSpam" height="250"></canvas>
-    </div>
-    <div class="card">
-        <h3>Log de Dados</h3>
-        <table id="dataTable">
-            <thead>
-                <tr><th>Data</th><th>Campanha</th><th>Spam %</th></tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
-</div>
-
-<div id="debug-console">Sistema iniciado. Aguardando sincronização...</div>
 
 <script>
+    // URL direta para exportação CSV da sua aba específica
     const CSV_URL = "https://docs.google.com/spreadsheets/d/1Qad4P2nADyNtaYC1gegxFrHjzgUwanGisQ3Sv7AYbOE/export?format=csv&gid=372389848";
 
-    let chart;
-
-    function log(msg) {
-        const consoleEl = document.getElementById("debug-console");
-        consoleEl.innerHTML += `<br>> ${msg}`;
-        consoleEl.scrollTop = consoleEl.scrollHeight;
-    }
+    let chartInstance = null;
 
     async function fetchData() {
-        log("Iniciando requisição ao Google Sheets...");
+        const statusEl = document.getElementById("status-text");
+        statusEl.innerText = "⏳ Conectando ao Google Sheets...";
+        
         try {
-            const response = await fetch(CSV_URL + "&t=" + Date.now());
-            if (!response.ok) throw new Error("Não foi possível acessar a planilha. Verifique se ela foi PUBLICADA NA WEB.");
+            const response = await fetch(CSV_URL + "&cache=" + Date.now());
+            if (!response.ok) throw new Error("Erro ao acessar planilha.");
             
             const text = await response.text();
-            log("Dados recebidos. Processando CSV...");
+            
+            // Verifica se o retorno é HTML (erro de login) ou CSV
+            if (text.includes("<!DOCTYPE html>")) {
+                statusEl.innerText = "❌ Erro: Planilha não publicada! Vá em Arquivo > Compartilhar > Publicar na Web.";
+                return;
+            }
+
             parseCSV(text);
+            statusEl.innerText = "✅ Sincronizado com sucesso!";
         } catch (err) {
-            log("ERRO: " + err.message);
+            statusEl.innerText = "❌ Falha na conexão: " + err.message;
         }
     }
 
-    function parseCSV(data) {
-        const rows = data.split("\n").slice(1);
+    function parseCSV(text) {
+        const rows = text.split(/\r?\n/);
         const tbody = document.querySelector("#dataTable tbody");
         tbody.innerHTML = "";
         
         const labels = [];
         const values = [];
 
-        rows.forEach(row => {
-            const cols = row.split(",");
-            if (cols.length >= 3) {
-                const date = cols[0].trim();
-                const campaign = cols[1].trim();
-                const spam = parseFloat(cols[2].replace(",", ".").replace("%", ""));
+        // Descobrir se o separador é vírgula ou ponto e vírgula
+        const firstLine = rows[0];
+        const separator = firstLine.includes(";") ? ";" : ",";
 
-                if (!isNaN(spam)) {
-                    tbody.innerHTML += `<tr><td>${date}</td><td>${campaign}</td><td><b>${spam.toFixed(2)}%</b></td></tr>`;
-                    labels.push(date);
-                    values.push(spam);
-                }
+        // Processar linhas (pula o cabeçalho)
+        for (let i = 1; i < rows.length; i++) {
+            if (!rows[i].trim()) continue;
+            
+            const cols = rows[i].split(separator);
+            if (cols.length < 3) continue;
+
+            const data = cols[0].trim();
+            const campanha = cols[1].trim();
+            // Limpa o valor do spam (remove %, troca vírgula por ponto)
+            let spamRaw = cols[2].trim().replace("%", "").replace(",", ".");
+            const spam = parseFloat(spamRaw);
+
+            if (!isNaN(spam)) {
+                const statusClass = spam >= 0.3 ? "critico" : "saudavel";
+                const statusTxt = spam >= 0.3 ? "REMOVER" : "APROVADO";
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${data}</td>
+                        <td style="font-weight:bold; color:#028090">${campanha}</td>
+                        <td>${spam.toFixed(2)}%</td>
+                        <td><span class="status-badge ${statusClass}">${statusTxt}</span></td>
+                    </tr>`;
+                
+                labels.push(data);
+                values.push(spam);
             }
-        });
+        }
 
         updateChart(labels.reverse(), values.reverse());
-        log("Interface atualizada com " + values.length + " registros.");
     }
 
     function updateChart(labels, values) {
         const ctx = document.getElementById('chartSpam').getContext('2d');
-        if (chart) chart.destroy();
-        chart = new Chart(ctx, {
+        if (chartInstance) chartInstance.destroy();
+        
+        chartInstance = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: labels,
-                datasets: [{ label: 'Spam %', data: values, borderColor: '#02C39A', tension: 0.3, fill: true, backgroundColor: 'rgba(2, 195, 154, 0.1)' }]
+                datasets: [{
+                    label: 'Taxa de Spam %',
+                    data: values,
+                    borderColor: '#02C39A',
+                    backgroundColor: 'rgba(2, 195, 154, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
             },
-            options: { responsive: true, maintainAspectRatio: false }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true } }
+            }
         });
     }
 
+    // Carregar dados automaticamente ao abrir
     window.onload = fetchData;
 </script>
 
