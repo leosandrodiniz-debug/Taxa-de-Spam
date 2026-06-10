@@ -151,7 +151,7 @@
         <div id="banner-alerta-local" style="display:none;" class="analise-box erro-conexao">
             <strong>⚠️ BLOQUEIO DE SEGURANÇA DETECTADO (CORS)</strong><br>
             O navegador não permite a sincronização automática rodando o arquivo direto do seu computador (`file:///`).<br>
-            <strong>Para funcionar sozinho:</strong> Suba este arquivo no seu repositório do GitHub e ative o GitHub Pages.
+            <strong>Para funcionar sozinho:</strong> Suba este arquivo no seu repositório do GitHub e vincule com a Vercel.
         </div>
 
         <section>
@@ -430,17 +430,17 @@
 
             try {
                 const response = await fetch(MASTER_RAW_CSV_URL);
-                if (!response.ok) throw new Error();
+                if (!response.ok) throw new Error("Falha HTTP ao carregar arquivo");
                 const csvText = await response.text();
                 
                 if (processarTextoCSV(csvText)) {
                     showToast("Dados integrados automaticamente!", "success");
-                    document.getElementById("banner-alerta-local").style.style.display = "none";
+                    document.getElementById("banner-alerta-local").style.display = "none"; // CORRIGIDO AQUI (.style.display)
                 } else {
                     showToast("Planilha lida, mas nenhuma linha bateu com os IDs das campanhas.", "error");
                 }
             } catch (error) {
-                // Só mostra o banner explicativo se realmente der erro de rede/CORS (geralmente rodando local)
+                console.error("Erro interno capturado:", error); // Adicionado para debugar no console se necessário
                 if(window.location.protocol === 'file:') {
                     document.getElementById("banner-alerta-local").style.display = "block";
                 }
@@ -666,7 +666,6 @@
 
         document.addEventListener("DOMContentLoaded", function() { 
             renderHubTopInitial();
-            // Dispara a sincronização imediatamente na abertura da página
             sincronizarGoogleSheets(); 
         });
     </script>
