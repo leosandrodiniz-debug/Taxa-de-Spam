@@ -435,12 +435,12 @@
                 
                 if (processarTextoCSV(csvText)) {
                     showToast("Dados integrados automaticamente!", "success");
-                    document.getElementById("banner-alerta-local").style.display = "none"; // CORRIGIDO AQUI (.style.display)
+                    document.getElementById("banner-alerta-local").style.display = "none";
                 } else {
                     showToast("Planilha lida, mas nenhuma linha bateu com os IDs das campanhas.", "error");
                 }
             } catch (error) {
-                console.error("Erro interno capturado:", error); // Adicionado para debugar no console se necessário
+                console.error("Erro interno capturado:", error);
                 if(window.location.protocol === 'file:') {
                     document.getElementById("banner-alerta-local").style.display = "block";
                 }
